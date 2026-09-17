@@ -1,0 +1,39 @@
+import Link from "next/link";
+
+export default function LandingPage() {
+  return (
+    <main className="flex flex-1 flex-col items-center justify-center gap-10 px-6 py-16 text-center">
+      <div className="flex flex-col gap-4">
+        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+          Stop debating.
+          <br />
+          <span className="text-primary">SyncUp.</span>
+        </h1>
+        <p className="max-w-sm text-lg text-foreground-muted">
+          Find something everyone actually wants to do.
+        </p>
+      </div>
+
+      <div className="flex w-full max-w-xs flex-col gap-4">
+        <Link
+          href="/create"
+          className="rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover"
+        >
+          Start a SyncUp
+        </Link>
+
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-foreground-muted">Already have a code?</p>
+          <Link
+            href="/join"
+            className="rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-colors hover:bg-surface-raised"
+          >
+            Join a SyncUp
+          </Link>
+        </div>
+      </div>
+
+      <p className="text-sm text-foreground-muted">No login required.</p>
+    </main>
+  );
+}

@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+/*
+  SyncUp design tokens (PRD sections 49-53).
+  Light = warm off-white + dark charcoal text.
+  Dark  = deep midnight, never pure black.
+  Primary = Coral/Orange (CTAs, Sync actions). Secondary = Electric Purple (sparingly).
+  Sync = Branded Green, reserved for agreement states only.
+*/
+:root {
+  --background: #fdf7f2;
+  --surface: #ffffff;
+  --surface-raised: #fff3ea;
+  --foreground: #241f1b;
+  --foreground-muted: #6b6259;
+  --border: #ece2d8;
+
+  --color-primary: #ff5a36;
+  --color-primary-hover: #e6491f;
+  --color-secondary: #7c4dff;
+  --color-sync: #17c964;
+
+  --radius-card: 20px;
+  --radius-pill: 999px;
+}
+
+:root[data-theme="dark"] {
+  --background: #15131c;
+  --surface: #1e1b26;
+  --surface-raised: #262231;
+  --foreground: #f5f1ee;
+  --foreground-muted: #a39cae;
+  --border: #322c3d;
+
+  --color-primary: #ff6b47;
+  --color-primary-hover: #ff8562;
+  --color-secondary: #9a73ff;
+  --color-sync: #23e07a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #15131c;
+    --surface: #1e1b26;
+    --surface-raised: #262231;
+    --foreground: #f5f1ee;
+    --foreground-muted: #a39cae;
+    --border: #322c3d;
+
+    --color-primary: #ff6b47;
+    --color-primary-hover: #ff8562;
+    --color-secondary: #9a73ff;
+    --color-sync: #23e07a;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-border: var(--border);
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-secondary: var(--color-secondary);
+  --color-sync: var(--color-sync);
+  --radius-card: var(--radius-card);
+  --radius-pill: var(--radius-pill);
+  --font-sans: var(--font-manrope);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "SyncUp",
+  "short_name": "SyncUp",
+  "description": "Stop debating. SyncUp.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#15131c",
+  "theme_color": "#ff5a36",
+  "icons": []
+}
