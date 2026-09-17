@@ -25,4 +25,5 @@ Database schema lives in [`supabase/migrations/0001_init.sql`](supabase/migratio
 ## Status
 
 Sprint 1 (foundation): project setup, design tokens, DB schema, session creation ✅
-Sprint 2+ (join flow, realtime waiting room, swipe deck, matching, restaurants, polish): in progress — see `CLAUDE.md` for the full build order.
+Sprint 2 (session): join flow, realtime waiting room, session start, server-authoritative timer ✅
+Sprint 3+ (swipe deck, matching, restaurants, polish): in progress — see `CLAUDE.md` for the full build order.

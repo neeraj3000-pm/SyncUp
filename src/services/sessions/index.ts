@@ -3,21 +3,65 @@ import { generateSessionCode } from "@/lib/session-code";
 
 export type SessionCategory = "WATCH" | "EAT";
 export type SessionMode = "COUPLE" | "GROUP";
+export type SessionStatus =
+  | "WAITING"
+  | "ACTIVE"
+  | "COMPLETED"
+  | "EXPIRED"
+  | "CANCELLED";
 
-interface CreateSessionInput {
+export interface SessionRow {
+  id: string;
+  code: string;
+  creator_id: string | null;
+  creator_guest_id: string | null;
+  mode: SessionMode;
   category: SessionCategory;
-  durationSeconds: number;
+  title: string | null;
+  duration_seconds: number;
+  started_at: string | null;
+  expires_at: string | null;
+  status: SessionStatus;
+  decision_rule: string;
+  created_at: string;
 }
+
+export interface ParticipantRow {
+  id: string;
+  session_id: string;
+  user_id: string | null;
+  guest_id: string | null;
+  display_name: string;
+  joined_at: string;
+  last_active_at: string;
+}
+
+// The MVP's participant cap (PRD section 6/22: Group mode is 3-10 people;
+// combined with Couple's 2, 10 is the hard ceiling either way).
+const MAX_PARTICIPANTS = 10;
+const MIN_PARTICIPANTS_TO_START = 2;
 
 // Codes are short and drawn from a ~29-character alphabet, so collisions are
 // rare but not impossible — retry a handful of times against the unique
 // constraint on sessions.code rather than trusting one random draw.
 const MAX_CODE_ATTEMPTS = 5;
 
+interface CreateSessionInput {
+  category: SessionCategory;
+  durationSeconds: number;
+  creatorGuestId: string;
+  displayName: string;
+}
+
 export async function createSession({
   category,
   durationSeconds,
-}: CreateSessionInput) {
+  creatorGuestId,
+  displayName,
+}: CreateSessionInput): Promise<{
+  session: SessionRow;
+  participant: ParticipantRow;
+}> {
   const supabase = await createClient();
 
   for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
@@ -29,18 +73,30 @@ export async function createSession({
         code,
         category,
         // Couple vs. Group isn't a creator choice in the PRD flow (section 10) —
-        // it's derived from how many participants actually join. Sprint 2's
-        // "start session" step recomputes this from the real participant count
-        // before the timer begins; the matching math (liked/total * 100) is
-        // identical either way, so this default has no effect until then.
+        // it's derived from how many participants actually join. startSession
+        // recomputes this from the real participant count before the timer
+        // begins; the matching math (liked/total * 100) is identical either
+        // way, so this default has no effect until then.
         mode: "GROUP",
         duration_seconds: durationSeconds,
         status: "WAITING",
+        creator_guest_id: creatorGuestId,
       })
       .select()
       .single();
 
-    if (!error) return data;
+    if (!error) {
+      const session = data as SessionRow;
+      // The creator is the session's first participant — this is what lets
+      // the waiting room (and the join screen's "X wants to decide...")
+      // show a name for the creator without a separate account system.
+      const participant = await joinSession(
+        session.id,
+        creatorGuestId,
+        displayName,
+      );
+      return { session, participant };
+    }
     // 23505 = unique_violation. Anything else is a real failure, surface it.
     if (error.code !== "23505") throw error;
   }
@@ -48,7 +104,7 @@ export async function createSession({
   throw new Error("Could not generate a unique session code, please retry.");
 }
 
-export async function getSessionById(id: string) {
+export async function getSessionById(id: string): Promise<SessionRow | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("sessions")
@@ -57,10 +113,12 @@ export async function getSessionById(id: string) {
     .maybeSingle();
 
   if (error) throw error;
-  return data;
+  return data as SessionRow | null;
 }
 
-export async function getSessionByCode(code: string) {
+export async function getSessionByCode(
+  code: string,
+): Promise<SessionRow | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("sessions")
@@ -69,17 +127,140 @@ export async function getSessionByCode(code: string) {
     .maybeSingle();
 
   if (error) throw error;
-  return data;
+  return data as SessionRow | null;
 }
 
-export async function joinSession(sessionId: string, displayName: string) {
+export async function getParticipants(
+  sessionId: string,
+): Promise<ParticipantRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("participants")
-    .insert({ session_id: sessionId, display_name: displayName })
+    .select()
+    .eq("session_id", sessionId)
+    .order("joined_at", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as ParticipantRow[];
+}
+
+// The creator is always the first participant to join a session (created
+// atomically alongside it in createSession), so "earliest joined_at" is the
+// creator's display name — used for the join screen's category context
+// (PRD section 19: "Neeraj wants to decide what to watch").
+export async function getCreatorName(
+  sessionId: string,
+): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("participants")
+    .select("display_name")
+    .eq("session_id", sessionId)
+    .order("joined_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.display_name ?? null;
+}
+
+export async function joinSession(
+  sessionId: string,
+  guestId: string,
+  displayName: string,
+): Promise<ParticipantRow> {
+  const supabase = await createClient();
+
+  // Rejoining (refresh, or opening the same link twice) should resolve back
+  // to the existing row rather than erroring on the unique constraint or
+  // creating a duplicate participant.
+  const { data: existing, error: existingError } = await supabase
+    .from("participants")
+    .select()
+    .eq("session_id", sessionId)
+    .eq("guest_id", guestId)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+  if (existing) return existing as ParticipantRow;
+
+  const { data: session, error: sessionError } = await supabase
+    .from("sessions")
+    .select("status")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (sessionError) throw sessionError;
+  if (!session) throw new Error("SESSION_NOT_FOUND");
+  // PRD section 20: joining after the session has gone ACTIVE is disabled
+  // for MVP rather than supported mid-session.
+  if (session.status !== "WAITING") throw new Error("SESSION_NOT_JOINABLE");
+
+  const { count, error: countError } = await supabase
+    .from("participants")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId);
+
+  if (countError) throw countError;
+  if ((count ?? 0) >= MAX_PARTICIPANTS) throw new Error("SESSION_FULL");
+
+  const { data, error } = await supabase
+    .from("participants")
+    .insert({ session_id: sessionId, guest_id: guestId, display_name: displayName })
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as ParticipantRow;
+}
+
+export async function startSession(
+  sessionId: string,
+  guestId: string,
+): Promise<SessionRow> {
+  const supabase = await createClient();
+
+  const { data: session, error: sessionError } = await supabase
+    .from("sessions")
+    .select()
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (sessionError) throw sessionError;
+  if (!session) throw new Error("SESSION_NOT_FOUND");
+  if (session.creator_guest_id !== guestId) throw new Error("NOT_CREATOR");
+  if (session.status !== "WAITING") throw new Error("SESSION_ALREADY_STARTED");
+
+  const { count, error: countError } = await supabase
+    .from("participants")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId);
+
+  if (countError) throw countError;
+  const participantCount = count ?? 0;
+  if (participantCount < MIN_PARTICIPANTS_TO_START) {
+    throw new Error("NOT_ENOUGH_PARTICIPANTS");
+  }
+
+  const startedAt = new Date();
+  const expiresAt = new Date(
+    startedAt.getTime() + session.duration_seconds * 1000,
+  );
+  // PRD section 21/22: exactly 2 participants is Couple mode, 3-10 is Group.
+  const mode: SessionMode = participantCount === 2 ? "COUPLE" : "GROUP";
+
+  const { data, error } = await supabase
+    .from("sessions")
+    .update({
+      status: "ACTIVE",
+      started_at: startedAt.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      mode,
+    })
+    .eq("id", sessionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as SessionRow;
 }
