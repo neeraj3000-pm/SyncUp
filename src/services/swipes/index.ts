@@ -2,6 +2,15 @@ import { createClient } from "@/lib/supabase/server";
 
 export type SwipeDirection = "SYNC" | "PASS";
 
+// Goes through the record_swipe() RPC (migration 0004) rather than a direct
+// table insert — the swipes INSERT policy's cross-table check on session
+// status turned out to fail specifically when executed through the real API
+// (parameterized queries via the connection pooler), even though the
+// identical insert succeeds as plain literal SQL. The RPC does the same
+// ACTIVE-session check itself in PL/pgSQL, sidestepping that interaction,
+// and mirrors the pattern session_progress()/get_my_swipes() already use
+// successfully. ON CONFLICT DO NOTHING inside the function makes a retried
+// submission a silent no-op rather than a unique-constraint error.
 export async function recordSwipe(
   sessionId: string,
   participantId: string,
@@ -9,20 +18,12 @@ export async function recordSwipe(
   direction: SwipeDirection,
 ): Promise<void> {
   const supabase = await createClient();
-  // ignoreDuplicates (-> ON CONFLICT DO NOTHING) rather than a plain upsert
-  // (-> ON CONFLICT DO UPDATE): a duplicate submission of the same swipe
-  // (e.g. a retried request) should be a silent no-op, not a unique-
-  // constraint error. It also has to be DO NOTHING and not DO UPDATE for a
-  // more basic reason — the swipes RLS policies (migration 0001) only grant
-  // INSERT and SELECT, no UPDATE, so Postgres rejects an ON CONFLICT DO
-  // UPDATE clause outright even when no row actually conflicts, because the
-  // query itself references an update action the table has no policy for.
-  const { error } = await supabase
-    .from("swipes")
-    .upsert(
-      { session_id: sessionId, participant_id: participantId, item_id: itemId, direction },
-      { onConflict: "session_id,participant_id,item_id", ignoreDuplicates: true },
-    );
+  const { error } = await supabase.rpc("record_swipe", {
+    p_session_id: sessionId,
+    p_participant_id: participantId,
+    p_item_id: itemId,
+    p_direction: direction,
+  });
 
   if (error) throw error;
 }
