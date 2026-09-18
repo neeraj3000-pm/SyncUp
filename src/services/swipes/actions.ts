@@ -43,7 +43,8 @@ export async function swipeAction(input: {
       input.direction as SwipeDirection,
     );
     return { ok: true, data: null };
-  } catch {
+  } catch (error) {
+    console.error("swipeAction failed:", error);
     return { ok: false, error: "Couldn't save that swipe. Please try again." };
   }
 }
@@ -64,7 +65,8 @@ export async function requestMoreCandidatesAction(input: {
     await generateCandidatePool(input.sessionId, input.category as SessionCategory, nextBatch);
     const items = await getSessionItems(input.sessionId);
     return { ok: true, data: items };
-  } catch {
+  } catch (error) {
+    console.error("requestMoreCandidatesAction failed:", error);
     return { ok: false, error: "Couldn't load more — please try again." };
   }
 }
@@ -76,7 +78,8 @@ export async function getMySwipedItemIdsAction(input: {
   try {
     const ids = await getMySwipedItemIds(input.sessionId, input.participantId);
     return { ok: true, data: Array.from(ids) };
-  } catch {
+  } catch (error) {
+    console.error("getMySwipedItemIdsAction failed:", error);
     return { ok: false, error: "Couldn't load your progress." };
   }
 }
@@ -87,7 +90,8 @@ export async function getSessionProgressAction(
   try {
     const progress = await getSessionProgress(sessionId);
     return { ok: true, data: progress };
-  } catch {
+  } catch (error) {
+    console.error("getSessionProgressAction failed:", error);
     return { ok: false, error: "Couldn't load progress." };
   }
 }
@@ -98,7 +102,8 @@ export async function markFinishedAction(
   try {
     await markParticipantFinished(participantId);
     return { ok: true, data: null };
-  } catch {
+  } catch (error) {
+    console.error("markFinishedAction failed:", error);
     return { ok: false, error: "Couldn't save that. Please try again." };
   }
 }

@@ -9,15 +9,19 @@ export async function recordSwipe(
   direction: SwipeDirection,
 ): Promise<void> {
   const supabase = await createClient();
-  // Upsert rather than insert: a duplicate submission of the same swipe
-  // (e.g. a retried request) should be a no-op, not a unique-constraint
-  // error surfaced to the UI. The deck only ever lets a card be swiped
-  // once, so this never legitimately changes an existing direction.
+  // ignoreDuplicates (-> ON CONFLICT DO NOTHING) rather than a plain upsert
+  // (-> ON CONFLICT DO UPDATE): a duplicate submission of the same swipe
+  // (e.g. a retried request) should be a silent no-op, not a unique-
+  // constraint error. It also has to be DO NOTHING and not DO UPDATE for a
+  // more basic reason — the swipes RLS policies (migration 0001) only grant
+  // INSERT and SELECT, no UPDATE, so Postgres rejects an ON CONFLICT DO
+  // UPDATE clause outright even when no row actually conflicts, because the
+  // query itself references an update action the table has no policy for.
   const { error } = await supabase
     .from("swipes")
     .upsert(
       { session_id: sessionId, participant_id: participantId, item_id: itemId, direction },
-      { onConflict: "session_id,participant_id,item_id" },
+      { onConflict: "session_id,participant_id,item_id", ignoreDuplicates: true },
     );
 
   if (error) throw error;

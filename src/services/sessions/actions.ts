@@ -28,6 +28,9 @@ function toActionError(error: unknown): string {
   if (error instanceof Error && FRIENDLY_ERRORS[error.message]) {
     return FRIENDLY_ERRORS[error.message];
   }
+  // Anything not in FRIENDLY_ERRORS is a bug, not an expected condition
+  // (like NOT_CREATOR) — log it so it doesn't get silently swallowed.
+  console.error("Unexpected session action error:", error);
   return "Something went wrong. Please try again.";
 }
 

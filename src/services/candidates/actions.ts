@@ -12,7 +12,8 @@ export async function getSessionItemsAction(sessionId: string): Promise<ActionRe
   try {
     const items = await getSessionItems(sessionId);
     return { ok: true, data: items };
-  } catch {
+  } catch (error) {
+    console.error("getSessionItemsAction failed:", error);
     return { ok: false, error: "Couldn't load the candidate pool." };
   }
 }
