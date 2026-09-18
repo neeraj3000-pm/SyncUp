@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getParticipants, getSessionById } from "@/services/sessions";
+import { getSessionItems } from "@/services/candidates";
 import { SessionRoom } from "@/components/SessionRoom";
 
 export default async function SessionPage({
@@ -11,11 +12,14 @@ export default async function SessionPage({
   const session = await getSessionById(id);
   if (!session) notFound();
 
-  const participants = await getParticipants(id);
+  const [participants, sessionItems] = await Promise.all([
+    getParticipants(id),
+    getSessionItems(id),
+  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-8 px-6 py-12">
-      <SessionRoom session={session} participants={participants} />
+      <SessionRoom session={session} participants={participants} sessionItems={sessionItems} />
     </main>
   );
 }

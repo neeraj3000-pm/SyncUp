@@ -6,9 +6,12 @@ import { createClient } from "@/lib/supabase/client";
 import { useGuestId, useStoredParticipantId } from "@/lib/guest";
 import { startSessionAction } from "@/services/sessions/actions";
 import type { ParticipantRow, SessionRow } from "@/services/sessions";
+import type { SessionItemRow } from "@/services/candidates";
+import { getSessionItemsAction } from "@/services/candidates/actions";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { ParticipantList } from "@/components/ParticipantList";
 import { SessionTimer } from "@/components/SessionTimer";
+import { SwipeDeck } from "@/components/SwipeDeck";
 
 const CATEGORY_LABEL: Record<string, string> = {
   WATCH: "what to watch 🎬",
@@ -20,18 +23,32 @@ const MIN_TO_START = 2;
 export function SessionRoom({
   session: initialSession,
   participants: initialParticipants,
+  sessionItems: initialSessionItems,
 }: {
   session: SessionRow;
   participants: ParticipantRow[];
+  sessionItems: SessionItemRow[];
 }) {
   const [session, setSession] = useState(initialSession);
   const [participants, setParticipants] = useState(initialParticipants);
+  const [sessionItems, setSessionItems] = useState(initialSessionItems);
   // undefined = "haven't checked localStorage yet" (avoids a hydration
   // mismatch / an incorrect "you haven't joined" flash before that check runs).
   const myGuestId = useGuestId();
   const myParticipantId = useStoredParticipantId(session.id);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+
+  // The candidate pool is generated inside startSession, which happens
+  // after this page's initial server-side fetch — so whoever's on this
+  // screen when status flips to ACTIVE (the creator who just clicked Start,
+  // or anyone else via the realtime update below) needs to pull it fresh.
+  useEffect(() => {
+    if (session.status !== "ACTIVE" || sessionItems.length > 0) return;
+    getSessionItemsAction(session.id).then((result) => {
+      if (result.ok) setSessionItems(result.data);
+    });
+  }, [session.status, session.id, sessionItems.length]);
 
   // Realtime: participant joins and the session's own status/timer fields
   // (PRD section 44). The server remains authoritative — this just relays
@@ -112,22 +129,19 @@ export function SessionRoom({
 
   if (session.status === "ACTIVE") {
     return (
-      <div className="flex w-full flex-col items-center gap-8 text-center">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold">Session is live!</h1>
-          <p className="text-foreground-muted">
-            Deciding {CATEGORY_LABEL[session.category] ?? session.category}
-          </p>
-        </div>
-
+      <div className="flex w-full flex-1 flex-col items-center gap-6 text-center">
         {session.expires_at && <SessionTimer expiresAt={session.expires_at} />}
 
-        <p className="text-sm text-foreground-muted">
-          Swiping starts here in the next build — for now, sit tight while
-          everyone&apos;s in the session together.
-        </p>
-
-        <ParticipantList participants={participants} myParticipantId={myParticipantId} />
+        {sessionItems.length === 0 ? (
+          <p className="text-foreground-muted">Finding movies everyone might like…</p>
+        ) : (
+          <SwipeDeck
+            sessionId={session.id}
+            participantId={myParticipantId}
+            category={session.category}
+            initialItems={sessionItems}
+          />
+        )}
       </div>
     );
   }
