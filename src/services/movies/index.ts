@@ -1,0 +1,111 @@
+import "server-only";
+
+// PRD section 37: movie content flows through a provider abstraction, never
+// called directly from the UI. TMDB is the provider (CLAUDE.md — chosen
+// during implementation, not named in the PRD itself).
+const TMDB_BASE = "https://api.themoviedb.org/3";
+const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
+
+interface TmdbMovieSummary {
+  id: number;
+  title: string;
+  overview: string;
+  poster_path: string | null;
+  release_date: string;
+  vote_average: number;
+  genre_ids: number[];
+}
+
+interface TmdbListResponse {
+  page: number;
+  results: TmdbMovieSummary[];
+  total_pages: number;
+}
+
+interface TmdbGenre {
+  id: number;
+  name: string;
+}
+
+async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+  const url = new URL(`${TMDB_BASE}${path}`);
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+      accept: "application/json",
+    },
+    // Genre names and popular-movie pages change slowly; caching keeps
+    // repeated candidate-pool generations from re-fetching identical pages.
+    next: { revalidate: 3600 },
+  });
+
+  if (!res.ok) {
+    throw new Error(`TMDB request failed: ${res.status} ${await res.text()}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+let genreMapPromise: Promise<Map<number, string>> | null = null;
+
+function getGenreMap(): Promise<Map<number, string>> {
+  // Module-level cache: the genre list is effectively static, no reason to
+  // refetch it once per candidate-pool generation.
+  genreMapPromise ??= tmdbFetch<{ genres: TmdbGenre[] }>("/genre/movie/list").then(
+    (data) => new Map(data.genres.map((g) => [g.id, g.name])),
+  );
+  return genreMapPromise;
+}
+
+export interface NormalizedItem {
+  external_id: string;
+  source: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  metadata: Record<string, unknown>;
+}
+
+function normalizeMovie(raw: TmdbMovieSummary, genreMap: Map<number, string>): NormalizedItem {
+  return {
+    external_id: String(raw.id),
+    source: "tmdb",
+    title: raw.title,
+    description: raw.overview || null,
+    image_url: raw.poster_path ? `${POSTER_BASE}${raw.poster_path}` : null,
+    metadata: {
+      year: raw.release_date ? raw.release_date.slice(0, 4) : null,
+      genres: raw.genre_ids.map((id) => genreMap.get(id)).filter(Boolean),
+      rating: raw.vote_average,
+    },
+  };
+}
+
+// Batch 1 reads TMDB pages 1-3, batch 2 reads pages 4-6, and so on — this is
+// how "Show Me 50 More" (PRD section 12) gets a different set of movies
+// instead of repeating the first batch. session_items itself also dedupes
+// against whatever the session has already shown (see services/candidates).
+const PAGES_PER_BATCH = 3;
+
+export async function getMoviePool(batchNumber: number, count = 50): Promise<NormalizedItem[]> {
+  const genreMap = await getGenreMap();
+  const startPage = (batchNumber - 1) * PAGES_PER_BATCH + 1;
+  const pages = await Promise.all(
+    Array.from({ length: PAGES_PER_BATCH }, (_, i) =>
+      tmdbFetch<TmdbListResponse>("/movie/popular", { page: String(startPage + i) }),
+    ),
+  );
+
+  const seen = new Set<number>();
+  const movies: NormalizedItem[] = [];
+  for (const page of pages) {
+    for (const raw of page.results) {
+      if (seen.has(raw.id) || !raw.poster_path) continue;
+      seen.add(raw.id);
+      movies.push(normalizeMovie(raw, genreMap));
+      if (movies.length >= count) return movies;
+    }
+  }
+  return movies;
+}

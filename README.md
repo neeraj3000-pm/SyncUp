@@ -20,9 +20,11 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Database schema lives in [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) — run it against your Supabase project via the SQL editor or the Supabase CLI.
+Database schema lives in [`supabase/migrations`](supabase/migrations) — run the files there in order (`0001`, `0002`, `0003`, `0004`, ...) against your Supabase project via the SQL editor or the Supabase CLI.
 
 ## Status
 
 Sprint 1 (foundation): project setup, design tokens, DB schema, session creation ✅
-Sprint 2+ (join flow, realtime waiting room, swipe deck, matching, restaurants, polish): in progress — see `CLAUDE.md` for the full build order.
+Sprint 2 (session): join flow, realtime waiting room, session start, server-authoritative timer ✅
+Sprint 3 (swipe): TMDB-backed candidate pool, swipe deck (drag + button fallback), swipe storage, progress ✅
+Sprint 4+ (reveal, Sync Score, results, restaurants, polish): in progress — see `CLAUDE.md` for the full build order.
