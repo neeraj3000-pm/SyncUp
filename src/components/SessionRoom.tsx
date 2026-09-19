@@ -68,25 +68,42 @@ export function SessionRoom({
   // that. complete_session_on_timer (migration 0005) re-checks expires_at
   // itself and is idempotent, so it's safe for every connected participant's
   // device to attempt this once their own clock reaches zero.
+  //
+  // This used to be a single setTimeout scheduled for the exact remaining
+  // duration. Mobile browsers throttle or fully suspend JS timers in a
+  // backgrounded tab (screen locked, app switched away) — a delay that can
+  // run many minutes long is exactly the kind that gets clipped or dropped,
+  // so a phone could sit well past the real deadline still showing swipeable
+  // cards, with every swipe then rejected by the server (which correctly
+  // already flipped the session to COMPLETED from another device) as
+  // "Couldn't save that swipe." Polling on a short fixed interval instead —
+  // plus an immediate re-check when the tab regains focus — means the worst
+  // case is a few seconds' delay instead of an indefinitely suspended timer.
   useEffect(() => {
-    if (session.status !== "ACTIVE" || !session.expires_at || timerFiredRef.current) return;
-    const msRemaining = new Date(session.expires_at).getTime() - Date.now();
-    const timeout = setTimeout(
-      () => {
-        timerFiredRef.current = true;
-        // Navigate directly rather than waiting for the realtime UPDATE to
-        // round-trip back — whether this call is the one that actually
-        // completed the session or a harmless no-op because another
-        // participant's device already did, the session is COMPLETED
-        // either way. The results page itself handles the rare case where
-        // it isn't (falls back to a "not ready yet" message).
-        completeSessionByTimerAction(session.id).then(() => {
-          router.push(`/results/${session.id}`);
-        });
-      },
-      Math.max(0, msRemaining),
-    );
-    return () => clearTimeout(timeout);
+    if (session.status !== "ACTIVE" || !session.expires_at) return;
+    const expiresAt = new Date(session.expires_at).getTime();
+
+    function checkExpiry() {
+      if (timerFiredRef.current || Date.now() < expiresAt) return;
+      timerFiredRef.current = true;
+      // Navigate directly rather than waiting for the realtime UPDATE to
+      // round-trip back — whether this call is the one that actually
+      // completed the session or a harmless no-op because another
+      // participant's device already did, the session is COMPLETED
+      // either way. The results page itself handles the rare case where
+      // it isn't (falls back to a "not ready yet" message).
+      completeSessionByTimerAction(session.id).then(() => {
+        router.push(`/results/${session.id}`);
+      });
+    }
+
+    checkExpiry();
+    const interval = setInterval(checkExpiry, 2000);
+    document.addEventListener("visibilitychange", checkExpiry);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", checkExpiry);
+    };
   }, [session.status, session.expires_at, session.id, router]);
 
   // Realtime: participant joins and the session's own status/timer fields
