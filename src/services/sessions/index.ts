@@ -242,12 +242,23 @@ export async function startSession(
     throw new Error("NOT_ENOUGH_PARTICIPANTS");
   }
 
+  // PRD section 21/22: exactly 2 participants is Couple mode, 3-10 is Group.
+  const mode: SessionMode = participantCount === 2 ? "COUPLE" : "GROUP";
+
+  // The candidate pool (PRD section 12) must exist BEFORE the status flips
+  // to ACTIVE, not after — flipping status first was letting a realtime
+  // subscriber (a joiner's device) see "ACTIVE" and try to load the pool
+  // before generateCandidatePool had actually written any session_items,
+  // with nothing to prompt a retry once it finished. Generating first also
+  // means the timer (below) starts counting down from when swiping can
+  // actually begin, not from before the TMDB calls even finished.
+  const { generateCandidatePool } = await import("@/services/candidates");
+  await generateCandidatePool(sessionId, session.category, 1);
+
   const startedAt = new Date();
   const expiresAt = new Date(
     startedAt.getTime() + session.duration_seconds * 1000,
   );
-  // PRD section 21/22: exactly 2 participants is Couple mode, 3-10 is Group.
-  const mode: SessionMode = participantCount === 2 ? "COUPLE" : "GROUP";
 
   const { data, error } = await supabase
     .from("sessions")
@@ -262,14 +273,5 @@ export async function startSession(
     .single();
 
   if (error) throw error;
-
-  // The candidate pool (PRD section 12) is generated the moment the session
-  // actually starts, not at creation — a session that's created but never
-  // started shouldn't cost a TMDB call. Imported dynamically to avoid a
-  // module-load-time circular import with services/candidates (which needs
-  // SessionCategory from this file, type-only).
-  const { generateCandidatePool } = await import("@/services/candidates");
-  await generateCandidatePool(sessionId, session.category, 1);
-
   return data as SessionRow;
 }
