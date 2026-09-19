@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ItemRow } from "@/services/candidates";
 import { getMovieDetailAction } from "@/services/movies/actions";
 import type { MovieDetail } from "@/services/movies";
@@ -25,10 +26,27 @@ export function DetailSheet({ item, onClose }: { item: ItemRow; onClose: () => v
     };
   }, [item.external_id]);
 
-  return (
+  // Rendered via a portal straight into <body>: this sheet can be opened
+  // from inside MovieCard, which sits inside DecisionCard's drag wrapper —
+  // that wrapper always has an inline `transform` (even `translateX(0px)`
+  // at rest), and per the CSS spec any ancestor with a non-`none` transform
+  // becomes the containing block for `position: fixed` descendants. Without
+  // the portal, this sheet would size/position itself against that
+  // (possibly mid-drag, offset) card box instead of the real viewport,
+  // which is why the close button could end up positioned off-screen.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center"
       onClick={onClose}
+      // React re-implements bubbling through the *component* tree for
+      // portals, not the DOM tree — so a pointerdown here still reaches
+      // DecisionCard's drag handler above it (MovieCard already guards its
+      // own info button the same way). Without this, DecisionCard calls
+      // setPointerCapture on itself, which silently retargets the
+      // following pointerup/click away from whatever was actually tapped
+      // in here (e.g. this Close button), so the button visibly exists but
+      // doesn't respond.
+      onPointerDown={(e) => e.stopPropagation()}
     >
       <div
         className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-card bg-surface p-6 sm:rounded-card"
@@ -128,6 +146,7 @@ export function DetailSheet({ item, onClose }: { item: ItemRow; onClose: () => v
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

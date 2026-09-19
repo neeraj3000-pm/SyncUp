@@ -1,8 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
-const SWIPE_THRESHOLD = 100;
+// A real swipe is a quick flick — the finger often only travels a modest
+// distance before lifting off, especially one-handed. Committing on
+// distance alone (the old behavior) meant a fast flick that didn't happen
+// to cross SWIPE_THRESHOLD just sprang back, which is what users on
+// Android/iPhone/iPad were reporting as the card "not being sensitive
+// enough." So a swipe now commits if EITHER the drag crossed the distance
+// threshold (a slow, deliberate drag) OR it was moving fast enough at
+// release (a flick), matching how swipe gestures actually feel.
+const SWIPE_THRESHOLD = 80;
+const VELOCITY_THRESHOLD = 0.45; // px/ms
+const MIN_FLICK_DISTANCE = 24; // guards against a high-velocity reading from a near-stationary tap
 
 // Category-agnostic swipe shell (PRD section 40) — it doesn't know whether
 // it's showing a movie or a restaurant, just renders `children` and reports
@@ -18,6 +28,10 @@ export function DecisionCard({
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [startX, setStartX] = useState(0);
+  // Mutable, not state: only read once at pointerup, and updating it on
+  // every pointermove shouldn't itself trigger a re-render.
+  const lastMoveRef = useRef<{ x: number; time: number } | null>(null);
+  const velocityRef = useRef(0);
 
   function commit(direction: "SYNC" | "PASS") {
     setDragging(false);
@@ -31,16 +45,26 @@ export function DecisionCard({
     e.currentTarget.setPointerCapture(e.pointerId);
     setDragging(true);
     setStartX(e.clientX - dragX);
+    lastMoveRef.current = { x: e.clientX, time: e.timeStamp };
+    velocityRef.current = 0;
   }
 
   function handlePointerMove(e: React.PointerEvent) {
     if (!dragging) return;
     setDragX(e.clientX - startX);
+    const last = lastMoveRef.current;
+    if (last) {
+      const dt = e.timeStamp - last.time;
+      if (dt > 0) velocityRef.current = (e.clientX - last.x) / dt;
+    }
+    lastMoveRef.current = { x: e.clientX, time: e.timeStamp };
   }
 
   function handlePointerUp() {
     if (!dragging) return;
-    if (Math.abs(dragX) > SWIPE_THRESHOLD) {
+    const isFlick =
+      Math.abs(dragX) > MIN_FLICK_DISTANCE && Math.abs(velocityRef.current) > VELOCITY_THRESHOLD;
+    if (Math.abs(dragX) > SWIPE_THRESHOLD || isFlick) {
       commit(dragX > 0 ? "SYNC" : "PASS");
     } else {
       setDragging(false);
