@@ -86,7 +86,16 @@ export function SwipeDeck({
     let cancelled = false;
     async function poll() {
       const result = await getSessionProgressAction(sessionId);
-      if (!cancelled && result.ok) setProgress(result.data);
+      if (cancelled || !result.ok) return;
+      setProgress(result.data);
+      // Resume support for "finished," same idea as the swiped-items resume
+      // above: `finished` otherwise only ever gets set by this device's own
+      // "I'm Done" click, so reloading after finishing (or opening the
+      // session on a second tab) would show the pre-done screen again even
+      // though the server already has you marked done — which also hid the
+      // "everyone's done" reveal prompt from ever appearing for you.
+      const mine = result.data.find((p) => p.participant_id === participantId);
+      if (mine?.finished_at) setFinished(true);
     }
     poll();
     const interval = setInterval(poll, PROGRESS_POLL_MS);
@@ -94,7 +103,7 @@ export function SwipeDeck({
       cancelled = true;
       clearInterval(interval);
     };
-  }, [sessionId]);
+  }, [sessionId, participantId]);
 
   function handleSwipe(item: ItemRow, direction: "SYNC" | "PASS") {
     if (advancingRef.current) return;
@@ -225,7 +234,7 @@ export function SwipeDeck({
 
       <div className="relative h-[60vh] w-full max-w-sm">
         {next && (
-          <div className="absolute inset-0 scale-95 translate-y-2 opacity-70">
+          <div className="pointer-events-none absolute inset-0 scale-95 translate-y-2 opacity-70">
             {renderCard(category, next)}
           </div>
         )}

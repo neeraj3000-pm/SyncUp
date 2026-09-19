@@ -69,14 +69,14 @@ export function DecisionCard({
         <div
           aria-hidden
           style={{ opacity: syncOpacity }}
-          className="absolute left-4 top-4 z-10 rounded-card border-2 border-sync px-3 py-1 text-lg font-extrabold text-sync"
+          className="pointer-events-none absolute left-4 top-4 z-10 rounded-card border-2 border-sync px-3 py-1 text-lg font-extrabold text-sync"
         >
           SYNC ✓
         </div>
         <div
           aria-hidden
           style={{ opacity: passOpacity }}
-          className="absolute right-4 top-4 z-10 rounded-card border-2 border-foreground-muted px-3 py-1 text-lg font-extrabold text-foreground-muted"
+          className="pointer-events-none absolute right-4 top-4 z-10 rounded-card border-2 border-foreground-muted px-3 py-1 text-lg font-extrabold text-foreground-muted"
         >
           PASS
         </div>
