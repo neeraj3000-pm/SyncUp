@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { setStoredParticipantId, useGuestId } from "@/lib/guest";
 import { createSessionAction } from "@/services/sessions/actions";
 
@@ -14,10 +14,26 @@ const DURATIONS = [
   { value: 120, label: "2 min", helper: "Quick decision" },
   { value: 300, label: "5 min", helper: "Take your time" },
   { value: 600, label: "10 min", helper: "Explore a little" },
+  // 0 is the "no limit" sentinel — translated to null server-side before
+  // it reaches the database (createSessionAction).
+  { value: 0, label: "No time limit", helper: "Swipe at your own pace" },
 ] as const;
 
 export default function CreatePage() {
-  const [category, setCategory] = useState<"WATCH" | "EAT">("WATCH");
+  return (
+    <Suspense>
+      <CreateForm />
+    </Suspense>
+  );
+}
+
+// Re-Sync (ResultsView) links here with ?category=WATCH pre-filled — one
+// less tap when starting another round of the same category.
+function CreateForm() {
+  const searchParams = useSearchParams();
+  const initialCategory = searchParams.get("category") === "EAT" ? "EAT" : "WATCH";
+
+  const [category, setCategory] = useState<"WATCH" | "EAT">(initialCategory);
   const [duration, setDuration] = useState(300);
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);

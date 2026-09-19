@@ -5,9 +5,11 @@ import type { ParticipantRow } from "@/services/sessions";
 export function ParticipantList({
   participants,
   myParticipantId,
+  hostParticipantId,
 }: {
   participants: ParticipantRow[];
   myParticipantId: string | null;
+  hostParticipantId?: string | null;
 }) {
   return (
     <ul className="flex w-full flex-col gap-2">
@@ -20,6 +22,11 @@ export function ParticipantList({
             {p.display_name}
             {p.id === myParticipantId && (
               <span className="text-foreground-muted"> (you)</span>
+            )}
+            {/* Remote groups have no side-channel to know who's driving
+                Start/Reveal/End — labeling the host removes that ambiguity. */}
+            {p.id === hostParticipantId && (
+              <span className="text-foreground-muted"> (Host)</span>
             )}
           </span>
           <span className="font-semibold text-sync">✓</span>

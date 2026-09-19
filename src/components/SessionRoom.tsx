@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useGuestId, useStoredParticipantId } from "@/lib/guest";
 import { startSessionAction } from "@/services/sessions/actions";
 import type { ParticipantRow, SessionRow } from "@/services/sessions";
 import type { SessionItemRow } from "@/services/candidates";
 import { getSessionItemsAction } from "@/services/candidates/actions";
+import { completeSessionByCreatorAction, completeSessionByTimerAction } from "@/services/matching/actions";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { ParticipantList } from "@/components/ParticipantList";
 import { SessionTimer } from "@/components/SessionTimer";
@@ -29,6 +31,7 @@ export function SessionRoom({
   participants: ParticipantRow[];
   sessionItems: SessionItemRow[];
 }) {
+  const router = useRouter();
   const [session, setSession] = useState(initialSession);
   const [participants, setParticipants] = useState(initialParticipants);
   const [sessionItems, setSessionItems] = useState(initialSessionItems);
@@ -38,6 +41,8 @@ export function SessionRoom({
   const myParticipantId = useStoredParticipantId(session.id);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [ending, setEnding] = useState(false);
+  const timerFiredRef = useRef(false);
 
   // The candidate pool is generated inside startSession, which happens
   // after this page's initial server-side fetch — so whoever's on this
@@ -49,6 +54,32 @@ export function SessionRoom({
       if (result.ok) setSessionItems(result.data);
     });
   }, [session.status, session.id, sessionItems.length]);
+
+  // Once the session completes, every participant's screen moves to the
+  // reveal (PRD section 31: no additional action should be required). The
+  // status change itself arrives either from this device's own action
+  // (Start/End Now) or via the realtime subscription below.
+  useEffect(() => {
+    if (session.status === "COMPLETED") router.push(`/results/${session.id}`);
+  }, [session.status, session.id, router]);
+
+  // PRD section 31: the timer running out ends the session automatically,
+  // for everyone, with no button required — this is what actually enforces
+  // that. complete_session_on_timer (migration 0005) re-checks expires_at
+  // itself and is idempotent, so it's safe for every connected participant's
+  // device to attempt this once their own clock reaches zero.
+  useEffect(() => {
+    if (session.status !== "ACTIVE" || !session.expires_at || timerFiredRef.current) return;
+    const msRemaining = new Date(session.expires_at).getTime() - Date.now();
+    const timeout = setTimeout(
+      () => {
+        timerFiredRef.current = true;
+        completeSessionByTimerAction(session.id);
+      },
+      Math.max(0, msRemaining),
+    );
+    return () => clearTimeout(timeout);
+  }, [session.status, session.expires_at, session.id]);
 
   // Realtime: participant joins and the session's own status/timer fields
   // (PRD section 44). The server remains authoritative — this just relays
@@ -111,7 +142,14 @@ export function SessionRoom({
     );
   }
 
-  if (session.status === "COMPLETED" || session.status === "EXPIRED" || session.status === "CANCELLED") {
+  if (session.status === "COMPLETED") {
+    // The redirect effect above is already navigating away — render
+    // nothing rather than a stale WAITING/ACTIVE view for the instant
+    // before that happens.
+    return null;
+  }
+
+  if (session.status === "EXPIRED" || session.status === "CANCELLED") {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
         <h1 className="text-2xl font-bold">This SyncUp has ended.</h1>
@@ -126,6 +164,31 @@ export function SessionRoom({
   }
 
   const isCreator = myGuestId === session.creator_guest_id;
+  const hostParticipantId =
+    participants.find((p) => p.guest_id === session.creator_guest_id)?.id ?? null;
+  const hostName =
+    participants.find((p) => p.guest_id === session.creator_guest_id)?.display_name ?? "the host";
+
+  async function completeNow() {
+    if (!myGuestId) return;
+    setEnding(true);
+    const result = await completeSessionByCreatorAction({
+      sessionId: session.id,
+      creatorGuestId: myGuestId,
+    });
+    setEnding(false);
+    if (!result.ok) window.alert(result.error);
+    // On success, the sessions UPDATE realtime event (or this device's own
+    // optimistic path) flips status to COMPLETED and the effect above redirects.
+  }
+
+  // "Reveal Results" (everyone already finished naturally) skips the
+  // confirmation — there's no real "are you sure" tension there. "End Now"
+  // (ending early, mid-swipe, for the rest of the group) still confirms,
+  // since that one can genuinely cut someone off early by mistake.
+  function handleEndNow() {
+    if (window.confirm("End this SyncUp now and reveal the results?")) completeNow();
+  }
 
   if (session.status === "ACTIVE") {
     return (
@@ -140,7 +203,22 @@ export function SessionRoom({
             participantId={myParticipantId}
             category={session.category}
             initialItems={sessionItems}
+            isCreator={isCreator}
+            hostName={hostName}
+            hostParticipantId={hostParticipantId}
+            onCreatorReveal={completeNow}
           />
+        )}
+
+        {isCreator && (
+          <button
+            type="button"
+            onClick={handleEndNow}
+            disabled={ending}
+            className="text-sm text-foreground-muted underline underline-offset-2 disabled:opacity-50"
+          >
+            {ending ? "Ending…" : "End SyncUp Now"}
+          </button>
         )}
       </div>
     );
@@ -167,7 +245,11 @@ export function SessionRoom({
         <CopyLinkButton path={`/join/${session.code}`} />
       </div>
 
-      <ParticipantList participants={participants} myParticipantId={myParticipantId} />
+      <ParticipantList
+        participants={participants}
+        myParticipantId={myParticipantId}
+        hostParticipantId={hostParticipantId}
+      />
 
       {isCreator ? (
         <div className="flex w-full flex-col items-center gap-2">
