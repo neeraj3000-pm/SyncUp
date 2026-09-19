@@ -149,7 +149,22 @@ interface TmdbWatchProvidersRegion {
   flatrate?: TmdbWatchProvider[];
 }
 
-interface TmdbMovieDetailResponse extends TmdbMovieSummary {
+interface TmdbGenreObject {
+  id: number;
+  name: string;
+}
+
+// The detail endpoint's shape differs from the list/summary endpoints
+// (TmdbMovieSummary) in one significant way: genres come back as full
+// {id, name} objects here, not the bare genre_ids array popular/discover
+// use — so no genre-name lookup table is needed for this path at all.
+interface TmdbMovieDetailResponse {
+  title: string;
+  overview: string;
+  poster_path: string | null;
+  release_date: string;
+  vote_average: number;
+  genres: TmdbGenreObject[];
   runtime: number | null;
   credits?: { cast: TmdbCastMember[]; crew: TmdbCrewMember[] };
   videos?: { results: TmdbVideo[] };
@@ -171,12 +186,9 @@ export interface MovieDetail {
 }
 
 export async function getMovieDetail(externalId: string): Promise<MovieDetail> {
-  const [detail, genreMap] = await Promise.all([
-    tmdbFetch<TmdbMovieDetailResponse>(`/movie/${externalId}`, {
-      append_to_response: "credits,videos,watch/providers",
-    }),
-    getGenreMap(),
-  ]);
+  const detail = await tmdbFetch<TmdbMovieDetailResponse>(`/movie/${externalId}`, {
+    append_to_response: "credits,videos,watch/providers",
+  });
 
   const director = detail.credits?.crew.find((c) => c.job === "Director")?.name ?? null;
   const cast = (detail.credits?.cast ?? [])
@@ -196,7 +208,7 @@ export async function getMovieDetail(externalId: string): Promise<MovieDetail> {
     description: detail.overview || null,
     imageUrl: detail.poster_path ? `${POSTER_BASE}${detail.poster_path}` : null,
     year: detail.release_date ? detail.release_date.slice(0, 4) : null,
-    genres: detail.genre_ids.map((id) => genreMap.get(id)).filter((g): g is string => Boolean(g)),
+    genres: detail.genres.map((g) => g.name),
     rating: detail.vote_average,
     runtimeMinutes: detail.runtime,
     director,

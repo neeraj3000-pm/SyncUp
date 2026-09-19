@@ -74,12 +74,20 @@ export function SessionRoom({
     const timeout = setTimeout(
       () => {
         timerFiredRef.current = true;
-        completeSessionByTimerAction(session.id);
+        // Navigate directly rather than waiting for the realtime UPDATE to
+        // round-trip back — whether this call is the one that actually
+        // completed the session or a harmless no-op because another
+        // participant's device already did, the session is COMPLETED
+        // either way. The results page itself handles the rare case where
+        // it isn't (falls back to a "not ready yet" message).
+        completeSessionByTimerAction(session.id).then(() => {
+          router.push(`/results/${session.id}`);
+        });
       },
       Math.max(0, msRemaining),
     );
     return () => clearTimeout(timeout);
-  }, [session.status, session.expires_at, session.id]);
+  }, [session.status, session.expires_at, session.id, router]);
 
   // Realtime: participant joins and the session's own status/timer fields
   // (PRD section 44). The server remains authoritative — this just relays
@@ -177,9 +185,13 @@ export function SessionRoom({
       creatorGuestId: myGuestId,
     });
     setEnding(false);
-    if (!result.ok) window.alert(result.error);
-    // On success, the sessions UPDATE realtime event (or this device's own
-    // optimistic path) flips status to COMPLETED and the effect above redirects.
+    if (!result.ok) {
+      window.alert(result.error);
+      return;
+    }
+    // Navigate directly rather than waiting for the realtime UPDATE to
+    // round-trip back to this same device that just triggered it.
+    router.push(`/results/${session.id}`);
   }
 
   // "Reveal Results" (everyone already finished naturally) skips the
