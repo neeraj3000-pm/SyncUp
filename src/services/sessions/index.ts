@@ -18,7 +18,7 @@ export interface SessionRow {
   mode: SessionMode;
   category: SessionCategory;
   title: string | null;
-  duration_seconds: number;
+  duration_seconds: number | null;
   started_at: string | null;
   expires_at: string | null;
   status: SessionStatus;
@@ -48,7 +48,9 @@ const MAX_CODE_ATTEMPTS = 5;
 
 interface CreateSessionInput {
   category: SessionCategory;
-  durationSeconds: number;
+  // null = no time limit (PRD section 15's 2/5/10 min plus an MVP addition
+  // — a group can choose to just take as long as they want).
+  durationSeconds: number | null;
   creatorGuestId: string;
   displayName: string;
 }
@@ -256,16 +258,19 @@ export async function startSession(
   await generateCandidatePool(sessionId, session.category, 1);
 
   const startedAt = new Date();
-  const expiresAt = new Date(
-    startedAt.getTime() + session.duration_seconds * 1000,
-  );
+  // null duration_seconds ("No time limit") means no expiry — SessionTimer
+  // already treats a null expires_at as "don't render a countdown," and
+  // completion then only ever happens via the creator's manual End/Reveal.
+  const expiresAt = session.duration_seconds
+    ? new Date(startedAt.getTime() + session.duration_seconds * 1000)
+    : null;
 
   const { data, error } = await supabase
     .from("sessions")
     .update({
       status: "ACTIVE",
       started_at: startedAt.toISOString(),
-      expires_at: expiresAt.toISOString(),
+      expires_at: expiresAt ? expiresAt.toISOString() : null,
       mode,
     })
     .eq("id", sessionId)

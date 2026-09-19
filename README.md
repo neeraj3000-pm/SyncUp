@@ -27,4 +27,5 @@ Database schema lives in [`supabase/migrations`](supabase/migrations) — run th
 Sprint 1 (foundation): project setup, design tokens, DB schema, session creation ✅
 Sprint 2 (session): join flow, realtime waiting room, session start, server-authoritative timer ✅
 Sprint 3 (swipe): TMDB-backed candidate pool, swipe deck (drag + button fallback), swipe storage, progress ✅
-Sprint 4+ (reveal, Sync Score, results, restaurants, polish): in progress — see `CLAUDE.md` for the full build order.
+Sprint 4 (matching): reveal, Sync Score, result ranking, result detail, optional timer, host-authoritative reveal ✅
+Sprint 5+ (restaurants, polish): in progress — see `CLAUDE.md` for the full build order.

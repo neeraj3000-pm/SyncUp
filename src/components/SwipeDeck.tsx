@@ -36,11 +36,19 @@ export function SwipeDeck({
   participantId,
   category,
   initialItems,
+  isCreator,
+  hostName,
+  hostParticipantId,
+  onCreatorReveal,
 }: {
   sessionId: string;
   participantId: string;
   category: SessionCategory;
   initialItems: SessionItemRow[];
+  isCreator: boolean;
+  hostName: string;
+  hostParticipantId: string | null;
+  onCreatorReveal: () => void;
 }) {
   const [items, setItems] = useState(initialItems);
   const [queue, setQueue] = useState<ItemRow[] | null>(null);
@@ -48,6 +56,7 @@ export function SwipeDeck({
   const [finished, setFinished] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [revealPromptDismissed, setRevealPromptDismissed] = useState(false);
   const advancingRef = useRef(false);
 
   // Resume support: figure out what this participant already swiped (across
@@ -124,13 +133,51 @@ export function SwipeDeck({
   }
 
   const totalSwiped = progress.find((p) => p.participant_id === participantId)?.swipe_count ?? 0;
+  // PRD section 30: if everyone finishes before time (or an untimed
+  // session's pool) runs out, the group gets a choice rather than being
+  // yanked straight to results. Only the host acts on it (see
+  // SessionRoom's comment on why Reveal/End Now are creator-only).
+  const everyoneFinished = progress.length > 0 && progress.every((p) => p.finished_at);
 
   if (finished) {
     return (
       <div className="flex w-full flex-col items-center gap-6 text-center">
         <p className="text-lg font-semibold">You&apos;re done ✓</p>
-        <p className="text-sm text-foreground-muted">Waiting for everyone else to finish…</p>
-        <SwipeProgress progress={progress} totalItems={items.length} myParticipantId={participantId} />
+
+        {everyoneFinished && !revealPromptDismissed ? (
+          isCreator ? (
+            <div className="flex w-full flex-col gap-3">
+              <p className="text-sm text-foreground-muted">Everyone&apos;s done! 🎉</p>
+              <button
+                type="button"
+                onClick={onCreatorReveal}
+                className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover"
+              >
+                Reveal Results
+              </button>
+              <button
+                type="button"
+                onClick={() => setRevealPromptDismissed(true)}
+                className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-colors hover:bg-surface-raised"
+              >
+                Not Yet
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-muted">
+              Everyone&apos;s done! Waiting for {hostName} to reveal results…
+            </p>
+          )
+        ) : (
+          <p className="text-sm text-foreground-muted">Waiting for everyone else to finish…</p>
+        )}
+
+        <SwipeProgress
+          progress={progress}
+          totalItems={items.length}
+          myParticipantId={participantId}
+          hostParticipantId={hostParticipantId}
+        />
       </div>
     );
   }
@@ -157,7 +204,12 @@ export function SwipeDeck({
           </button>
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
-        <SwipeProgress progress={progress} totalItems={items.length} myParticipantId={participantId} />
+        <SwipeProgress
+          progress={progress}
+          totalItems={items.length}
+          myParticipantId={participantId}
+          hostParticipantId={hostParticipantId}
+        />
       </div>
     );
   }
@@ -185,7 +237,12 @@ export function SwipeDeck({
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <SwipeProgress progress={progress} totalItems={items.length} myParticipantId={participantId} />
+      <SwipeProgress
+        progress={progress}
+        totalItems={items.length}
+        myParticipantId={participantId}
+        hostParticipantId={hostParticipantId}
+      />
     </div>
   );
 }

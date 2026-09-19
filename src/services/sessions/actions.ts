@@ -35,7 +35,10 @@ function toActionError(error: unknown): string {
 }
 
 const VALID_CATEGORIES: SessionCategory[] = ["WATCH", "EAT"];
-const VALID_DURATIONS = [120, 300, 600]; // 2 / 5 / 10 minutes, PRD section 15
+// 2 / 5 / 10 minutes (PRD section 15) plus an MVP addition: 0 from the
+// client means "No time limit" and is translated to null before it ever
+// reaches the database — see createSession's durationSeconds param.
+const VALID_DURATIONS = [0, 120, 300, 600];
 const MAX_NAME_LENGTH = 40;
 
 function normalizeName(raw: unknown): string | null {
@@ -64,7 +67,7 @@ export async function createSessionAction(input: {
   try {
     const data = await createSession({
       category: input.category as SessionCategory,
-      durationSeconds: input.durationSeconds,
+      durationSeconds: input.durationSeconds === 0 ? null : input.durationSeconds,
       creatorGuestId: input.creatorGuestId,
       displayName,
     });

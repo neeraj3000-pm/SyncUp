@@ -8,10 +8,12 @@ export function SwipeProgress({
   progress,
   totalItems,
   myParticipantId,
+  hostParticipantId,
 }: {
   progress: ParticipantProgress[];
   totalItems: number;
   myParticipantId: string;
+  hostParticipantId?: string | null;
 }) {
   if (progress.length === 0) return null;
 
@@ -26,6 +28,9 @@ export function SwipeProgress({
             {p.display_name}
             {p.participant_id === myParticipantId && (
               <span className="text-foreground-muted"> (you)</span>
+            )}
+            {p.participant_id === hostParticipantId && (
+              <span className="text-foreground-muted"> (Host)</span>
             )}
           </span>
           <span className="font-semibold">

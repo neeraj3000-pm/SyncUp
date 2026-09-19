@@ -109,3 +109,117 @@ export async function getMoviePool(batchNumber: number, count = 50): Promise<Nor
   }
   return movies;
 }
+
+// ── movie detail (Sprint 4 results/detail view only) ───────────────────
+// Runtime, cast, trailer, and streaming availability all need per-movie
+// TMDB calls the candidate pool deliberately skips (see MovieCard.tsx's
+// comment) — fetching this for all 50 swipe candidates would be slow and
+// TMDB-call-heavy, but it's cheap for the handful of items that actually
+// end up in a result list. `append_to_response` combines what would
+// otherwise be three separate requests into one.
+
+const LOGO_BASE = "https://image.tmdb.org/t/p/w92";
+// PRD section 38's example market — India (Netflix/Prime/JioHotstar).
+const STREAMING_REGION = "IN";
+
+interface TmdbCastMember {
+  name: string;
+  order: number;
+}
+
+interface TmdbCrewMember {
+  job: string;
+  name: string;
+}
+
+interface TmdbVideo {
+  site: string;
+  type: string;
+  key: string;
+  official: boolean;
+}
+
+interface TmdbWatchProvider {
+  provider_name: string;
+  logo_path: string;
+}
+
+interface TmdbWatchProvidersRegion {
+  link?: string;
+  flatrate?: TmdbWatchProvider[];
+}
+
+interface TmdbGenreObject {
+  id: number;
+  name: string;
+}
+
+// The detail endpoint's shape differs from the list/summary endpoints
+// (TmdbMovieSummary) in one significant way: genres come back as full
+// {id, name} objects here, not the bare genre_ids array popular/discover
+// use — so no genre-name lookup table is needed for this path at all.
+interface TmdbMovieDetailResponse {
+  title: string;
+  overview: string;
+  poster_path: string | null;
+  release_date: string;
+  vote_average: number;
+  genres: TmdbGenreObject[];
+  runtime: number | null;
+  credits?: { cast: TmdbCastMember[]; crew: TmdbCrewMember[] };
+  videos?: { results: TmdbVideo[] };
+  "watch/providers"?: { results: Record<string, TmdbWatchProvidersRegion> };
+}
+
+export interface MovieDetail {
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  year: string | null;
+  genres: string[];
+  rating: number;
+  runtimeMinutes: number | null;
+  director: string | null;
+  cast: string[];
+  trailerUrl: string | null;
+  streaming: { link: string | null; providers: { name: string; logoUrl: string }[] };
+}
+
+export async function getMovieDetail(externalId: string): Promise<MovieDetail> {
+  const detail = await tmdbFetch<TmdbMovieDetailResponse>(`/movie/${externalId}`, {
+    append_to_response: "credits,videos,watch/providers",
+  });
+
+  const director = detail.credits?.crew.find((c) => c.job === "Director")?.name ?? null;
+  const cast = (detail.credits?.cast ?? [])
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .slice(0, 5)
+    .map((c) => c.name);
+
+  const trailer = (detail.videos?.results ?? []).find(
+    (v) => v.site === "YouTube" && v.type === "Trailer",
+  );
+
+  const region = detail["watch/providers"]?.results?.[STREAMING_REGION];
+
+  return {
+    title: detail.title,
+    description: detail.overview || null,
+    imageUrl: detail.poster_path ? `${POSTER_BASE}${detail.poster_path}` : null,
+    year: detail.release_date ? detail.release_date.slice(0, 4) : null,
+    genres: detail.genres.map((g) => g.name),
+    rating: detail.vote_average,
+    runtimeMinutes: detail.runtime,
+    director,
+    cast,
+    trailerUrl: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null,
+    streaming: {
+      link: region?.link ?? null,
+      providers: (region?.flatrate ?? []).map((p) => ({
+        name: p.provider_name,
+        logoUrl: `${LOGO_BASE}${p.logo_path}`,
+      })),
+    },
+  };
+}
