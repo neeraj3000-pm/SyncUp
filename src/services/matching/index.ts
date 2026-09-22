@@ -6,6 +6,7 @@ export interface MatchRow {
   sync_score: number;
   participant_count: number;
   liked_count: number;
+  super_like_count: number;
   rank: number;
 }
 
@@ -16,7 +17,7 @@ export async function getMatches(sessionId: string): Promise<MatchRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("matches")
-    .select("sync_score, participant_count, liked_count, rank, item:items(*)")
+    .select("sync_score, participant_count, liked_count, super_like_count, rank, item:items(*)")
     .eq("session_id", sessionId)
     .order("rank", { ascending: true });
 

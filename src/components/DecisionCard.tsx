@@ -18,11 +18,19 @@ const MIN_FLICK_DISTANCE = 24; // guards against a high-velocity reading from a 
 // it's showing a movie or a restaurant, just renders `children` and reports
 // Sync/Pass. Buttons are always present alongside the drag gesture: PRD
 // section 57 is explicit that swipe must never be the only way to decide.
+//
+// Super Like (a stronger "yes," used to break ties when a couple/group has
+// multiple matches) is deliberately a dedicated button, not a gesture. An
+// upward swipe was the obvious dating-app-style option, but it would add a
+// vertical drag axis right as the app is trying to keep swipe unambiguous
+// from scrolling on a fixed mobile viewport — and PRD section 25 already
+// requires a button fallback for every gesture regardless, so the button
+// can just be the primary path instead of a backup for a riskier one.
 export function DecisionCard({
   onSwipe,
   children,
 }: {
-  onSwipe: (direction: "SYNC" | "PASS") => void;
+  onSwipe: (direction: "SYNC" | "PASS", superLiked?: boolean) => void;
   children: React.ReactNode;
 }) {
   const [dragX, setDragX] = useState(0);
@@ -33,12 +41,12 @@ export function DecisionCard({
   const lastMoveRef = useRef<{ x: number; time: number } | null>(null);
   const velocityRef = useRef(0);
 
-  function commit(direction: "SYNC" | "PASS") {
+  function commit(direction: "SYNC" | "PASS", superLiked = false) {
     setDragging(false);
     // Fling off-screen; the parent swaps in the next card right after, so
     // this instance unmounts and never needs to reset dragX itself.
     setDragX(direction === "SYNC" ? 600 : -600);
-    onSwipe(direction);
+    onSwipe(direction, superLiked);
   }
 
   function handlePointerDown(e: React.PointerEvent) {
@@ -116,6 +124,14 @@ export function DecisionCard({
           className="flex h-14 w-14 items-center justify-center rounded-pill border border-border bg-surface text-2xl shadow-md transition-colors hover:bg-surface-raised"
         >
           ✕
+        </button>
+        <button
+          type="button"
+          aria-label="Super Sync"
+          onClick={() => commit("SYNC", true)}
+          className="flex h-11 w-11 items-center justify-center rounded-pill border border-border bg-surface text-lg text-secondary shadow-md transition-colors hover:bg-surface-raised"
+        >
+          ⭐
         </button>
         <button
           type="button"

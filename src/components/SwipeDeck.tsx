@@ -106,13 +106,15 @@ export function SwipeDeck({
     };
   }, [sessionId, participantId]);
 
-  function handleSwipe(item: ItemRow, direction: "SYNC" | "PASS") {
+  function handleSwipe(item: ItemRow, direction: "SYNC" | "PASS", superLiked = false) {
     if (advancingRef.current) return;
     advancingRef.current = true;
 
-    swipeAction({ sessionId, participantId, itemId: item.id, direction }).then((result) => {
-      if (!result.ok) setError(result.error);
-    });
+    swipeAction({ sessionId, participantId, itemId: item.id, direction, superLiked }).then(
+      (result) => {
+        if (!result.ok) setError(result.error);
+      },
+    );
 
     setTimeout(() => {
       setQueue((prev) => (prev ? prev.slice(1) : prev));
@@ -240,7 +242,7 @@ export function SwipeDeck({
           </div>
         )}
         <div className="absolute inset-0" key={top.id}>
-          <DecisionCard onSwipe={(direction) => handleSwipe(top, direction)}>
+          <DecisionCard onSwipe={(direction, superLiked) => handleSwipe(top, direction, superLiked)}>
             {renderCard(category, top)}
           </DecisionCard>
         </div>

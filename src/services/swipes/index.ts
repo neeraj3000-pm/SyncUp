@@ -16,6 +16,7 @@ export async function recordSwipe(
   participantId: string,
   itemId: string,
   direction: SwipeDirection,
+  superLiked = false,
 ): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("record_swipe", {
@@ -23,6 +24,7 @@ export async function recordSwipe(
     p_participant_id: participantId,
     p_item_id: itemId,
     p_direction: direction,
+    p_super_liked: superLiked,
   });
 
   if (error) throw error;

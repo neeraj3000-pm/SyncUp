@@ -24,15 +24,22 @@ export async function swipeAction(input: {
   participantId: string;
   itemId: string;
   direction: string;
+  superLiked?: boolean;
 }): Promise<ActionResult<null>> {
   if (
     typeof input.sessionId !== "string" ||
     typeof input.participantId !== "string" ||
     typeof input.itemId !== "string" ||
-    !VALID_DIRECTIONS.includes(input.direction as SwipeDirection)
+    !VALID_DIRECTIONS.includes(input.direction as SwipeDirection) ||
+    (input.superLiked !== undefined && typeof input.superLiked !== "boolean")
   ) {
     return { ok: false, error: "Invalid swipe." };
   }
+
+  // A Pass can't be a super-like (matches the DB constraint) — silently
+  // drop the flag rather than error, since it can only mean the client
+  // sent a stale/mismatched combination, not a real user action.
+  const superLiked = input.superLiked === true && input.direction === "SYNC";
 
   try {
     await recordSwipe(
@@ -40,6 +47,7 @@ export async function swipeAction(input: {
       input.participantId,
       input.itemId,
       input.direction as SwipeDirection,
+      superLiked,
     );
     return { ok: true, data: null };
   } catch (error) {

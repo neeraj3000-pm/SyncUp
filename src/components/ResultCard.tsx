@@ -36,6 +36,13 @@ export function ResultCard({ match, onTap }: { match: MatchRow; onTap: () => voi
         <p className="text-xs text-foreground-muted">
           {match.liked_count}/{match.participant_count} picked it
         </p>
+        {match.super_like_count > 0 && (
+          <p className="text-xs font-semibold text-secondary">
+            {match.super_like_count === match.participant_count
+              ? "⭐ Everyone loved this"
+              : `⭐ ${match.super_like_count} super-liked this`}
+          </p>
+        )}
       </div>
 
       <SyncScore score={match.sync_score} />
