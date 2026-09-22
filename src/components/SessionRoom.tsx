@@ -27,10 +27,12 @@ export function SessionRoom({
   session: initialSession,
   participants: initialParticipants,
   sessionItems: initialSessionItems,
+  serverNow,
 }: {
   session: SessionRow;
   participants: ParticipantRow[];
   sessionItems: SessionItemRow[];
+  serverNow: string;
 }) {
   const router = useRouter();
   const [session, setSession] = useState(initialSession);
@@ -44,6 +46,13 @@ export function SessionRoom({
   const [startError, setStartError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
   const timerFiredRef = useRef(false);
+  // How far off this device's own clock is from the server's — a laptop
+  // with a fast clock or the wrong timezone otherwise makes the visual
+  // countdown lie (showing "Time's up!" while the server, correctly, still
+  // has time left). Computed once from the timestamp the server captured
+  // when it rendered this page; the initializer form of useState means
+  // this genuinely only runs once, not on every render.
+  const [clockOffsetMs] = useState(() => new Date(serverNow).getTime() - Date.now());
 
   // The candidate pool is generated inside startSession, which happens
   // after this page's initial server-side fetch — so whoever's on this
@@ -103,18 +112,30 @@ export function SessionRoom({
   useEffect(() => {
     if (session.status !== "ACTIVE" || !session.expires_at) return;
     const expiresAt = new Date(session.expires_at).getTime();
+    let inFlight = false;
 
     function checkExpiry() {
-      if (timerFiredRef.current || Date.now() < expiresAt) return;
-      timerFiredRef.current = true;
-      // Navigate directly rather than waiting for the realtime UPDATE to
-      // round-trip back — whether this call is the one that actually
-      // completed the session or a harmless no-op because another
-      // participant's device already did, the session is COMPLETED
-      // either way. The results page itself handles the rare case where
-      // it isn't (falls back to a "not ready yet" message).
-      completeSessionByTimerAction(session.id).then(() => {
-        router.push(`/results/${session.id}`);
+      if (timerFiredRef.current || inFlight || Date.now() + clockOffsetMs < expiresAt) return;
+      inFlight = true;
+      completeSessionByTimerAction(session.id).then((result) => {
+        inFlight = false;
+        // Only navigate on a server-confirmed COMPLETED status — never on
+        // the mere fact that this call resolved without throwing. A
+        // client whose clock runs fast, or is set to the wrong timezone,
+        // reaches this point before the real server-side deadline has
+        // passed; the RPC above correctly no-ops in that case (it
+        // re-checks expires_at against the database's own clock), and
+        // navigating anyway would send the user to a results page for a
+        // session that, per the server, genuinely isn't done yet —
+        // exactly the failure this whole polling approach exists to
+        // avoid trusting a client clock for in the first place.
+        if (result.ok && result.data.completed) {
+          timerFiredRef.current = true;
+          router.push(`/results/${session.id}`);
+        }
+        // Otherwise leave timerFiredRef false: the next poll tick (or the
+        // next visibilitychange) tries again, self-correcting once the
+        // real deadline arrives or another device completes it.
       });
     }
 
@@ -125,7 +146,7 @@ export function SessionRoom({
       clearInterval(interval);
       document.removeEventListener("visibilitychange", checkExpiry);
     };
-  }, [session.status, session.expires_at, session.id, router]);
+  }, [session.status, session.expires_at, session.id, router, clockOffsetMs]);
 
   // Realtime: participant joins and the session's own status/timer fields
   // (PRD section 44). The server remains authoritative — this just relays
@@ -243,7 +264,9 @@ export function SessionRoom({
   if (session.status === "ACTIVE") {
     return (
       <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
-        {session.expires_at && <SessionTimer expiresAt={session.expires_at} />}
+        {session.expires_at && (
+          <SessionTimer expiresAt={session.expires_at} clockOffsetMs={clockOffsetMs} />
+        )}
 
         {sessionItems.length === 0 ? (
           <p className="text-foreground-muted">Finding movies everyone might like…</p>
