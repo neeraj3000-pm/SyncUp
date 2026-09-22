@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useGuestId, useStoredParticipantId } from "@/lib/guest";
-import { startSessionAction } from "@/services/sessions/actions";
+import { getParticipantsAction, startSessionAction } from "@/services/sessions/actions";
 import type { ParticipantRow, SessionRow } from "@/services/sessions";
 import type { SessionItemRow } from "@/services/candidates";
 import { getSessionItemsAction } from "@/services/candidates/actions";
@@ -21,6 +21,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 const MIN_TO_START = 2;
+const PARTICIPANTS_POLL_MS = 4000;
 
 export function SessionRoom({
   session: initialSession,
@@ -62,6 +63,26 @@ export function SessionRoom({
   useEffect(() => {
     if (session.status === "COMPLETED") router.push(`/results/${session.id}`);
   }, [session.status, session.id, router]);
+
+  // Backstop for the Realtime participant-join subscription below: a
+  // WebSocket event can be delayed or dropped, which was leaving a new
+  // joiner invisible to the rest of the waiting room until someone
+  // happened to reload. Only matters pre-start — join is disabled once
+  // ACTIVE (session.status !== "WAITING" check below), so there's nothing
+  // for this poll to reconcile after that point.
+  useEffect(() => {
+    if (session.status !== "WAITING") return;
+    let cancelled = false;
+    const interval = setInterval(() => {
+      getParticipantsAction(session.id).then((result) => {
+        if (!cancelled && result.ok) setParticipants(result.data);
+      });
+    }, PARTICIPANTS_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [session.status, session.id]);
 
   // PRD section 31: the timer running out ends the session automatically,
   // for everyone, with no button required — this is what actually enforces
