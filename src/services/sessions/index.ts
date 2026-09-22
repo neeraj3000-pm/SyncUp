@@ -24,6 +24,11 @@ export interface SessionRow {
   status: SessionStatus;
   decision_rule: string;
   created_at: string;
+  // EAT only (PRD section 13) — exactly one of these shapes is set. See
+  // migration 0006 for which restaurant-search mode each implies.
+  location_lat: number | null;
+  location_lng: number | null;
+  location_label: string | null;
 }
 
 export interface ParticipantRow {
@@ -53,6 +58,10 @@ interface CreateSessionInput {
   durationSeconds: number | null;
   creatorGuestId: string;
   displayName: string;
+  // EAT only — see SessionRow's location fields.
+  locationLat?: number | null;
+  locationLng?: number | null;
+  locationLabel?: string | null;
 }
 
 export async function createSession({
@@ -60,6 +69,9 @@ export async function createSession({
   durationSeconds,
   creatorGuestId,
   displayName,
+  locationLat = null,
+  locationLng = null,
+  locationLabel = null,
 }: CreateSessionInput): Promise<{
   session: SessionRow;
   participant: ParticipantRow;
@@ -83,6 +95,9 @@ export async function createSession({
         duration_seconds: durationSeconds,
         status: "WAITING",
         creator_guest_id: creatorGuestId,
+        location_lat: locationLat,
+        location_lng: locationLng,
+        location_label: locationLabel,
       })
       .select()
       .single();

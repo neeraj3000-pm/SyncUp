@@ -47,15 +47,21 @@ function normalizeName(raw: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+const MAX_LOCATION_LABEL_LENGTH = 100;
+
 export async function createSessionAction(input: {
   category: string;
   durationSeconds: number;
   creatorGuestId: string;
   displayName: string;
+  locationLat?: number | null;
+  locationLng?: number | null;
+  locationLabel?: string | null;
 }): Promise<ActionResult<{ session: SessionRow; participant: ParticipantRow }>> {
   const displayName = normalizeName(input.displayName);
+  const category = input.category as SessionCategory;
   if (
-    !VALID_CATEGORIES.includes(input.category as SessionCategory) ||
+    !VALID_CATEGORIES.includes(category) ||
     !VALID_DURATIONS.includes(input.durationSeconds) ||
     typeof input.creatorGuestId !== "string" ||
     input.creatorGuestId.length === 0 ||
@@ -64,12 +70,33 @@ export async function createSessionAction(input: {
     return { ok: false, error: "Invalid session configuration." };
   }
 
+  // Location is EAT-only (PRD section 13) and one of two shapes: real
+  // coordinates from "Use my location," or free text from "Choose an
+  // area" — never both, and never either for WATCH.
+  const hasCoords =
+    typeof input.locationLat === "number" &&
+    Number.isFinite(input.locationLat) &&
+    typeof input.locationLng === "number" &&
+    Number.isFinite(input.locationLng);
+  const locationLabel =
+    typeof input.locationLabel === "string"
+      ? input.locationLabel.trim().slice(0, MAX_LOCATION_LABEL_LENGTH)
+      : "";
+
+  if (category === "EAT" && !hasCoords && locationLabel.length === 0) {
+    return { ok: false, error: "Tell us where you want to eat." };
+  }
+
   try {
     const data = await createSession({
-      category: input.category as SessionCategory,
+      category,
       durationSeconds: input.durationSeconds === 0 ? null : input.durationSeconds,
       creatorGuestId: input.creatorGuestId,
       displayName,
+      locationLat: category === "EAT" && hasCoords ? input.locationLat : null,
+      locationLng: category === "EAT" && hasCoords ? input.locationLng : null,
+      locationLabel:
+        category === "EAT" && !hasCoords && locationLabel.length > 0 ? locationLabel : null,
     });
     return { ok: true, data };
   } catch (error) {
