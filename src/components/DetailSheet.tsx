@@ -99,7 +99,7 @@ function DetailSheetShell({
               type="button"
               onClick={() => setVisible(false)}
               aria-label="Close"
-              className="mb-4 ml-auto flex h-8 w-8 items-center justify-center rounded-pill border border-border text-lg transition-transform duration-150 ease-out active:scale-[0.97]"
+              className="mb-4 ml-auto flex h-8 w-8 items-center justify-center rounded-pill border border-border text-lg transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
             >
               ✕
             </button>
@@ -201,7 +201,7 @@ function MovieDetailContent({ externalId }: { externalId: string }) {
             href={detail.streaming.link}
             target="_blank"
             rel="noreferrer"
-            className="w-full rounded-pill bg-primary px-8 py-4 text-center text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover"
+            className="w-full rounded-pill bg-primary px-8 py-4 text-center text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
           >
             View Options
           </a>
@@ -277,7 +277,7 @@ function RestaurantDetailContent({ externalId }: { externalId: string }) {
             href={detail.mapUrl}
             target="_blank"
             rel="noreferrer"
-            className="w-full rounded-pill border border-border px-8 py-4 text-center text-lg font-semibold transition-colors hover:bg-surface-raised"
+            className="w-full rounded-pill border border-border px-8 py-4 text-center text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
           >
             View on Map
           </a>
@@ -287,7 +287,7 @@ function RestaurantDetailContent({ externalId }: { externalId: string }) {
             href={detail.websiteUrl}
             target="_blank"
             rel="noreferrer"
-            className="w-full rounded-pill bg-primary px-8 py-4 text-center text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover"
+            className="w-full rounded-pill bg-primary px-8 py-4 text-center text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
           >
             Visit Website
           </a>

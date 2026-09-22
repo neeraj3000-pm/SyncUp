@@ -201,7 +201,7 @@ export function SessionRoom({
         </p>
         <Link
           href={`/join/${session.code}`}
-          className="rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover"
+          className="rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
         >
           Join with code {session.code}
         </Link>
@@ -222,7 +222,7 @@ export function SessionRoom({
         <h1 className="text-2xl font-bold">This SyncUp has ended.</h1>
         <Link
           href="/create"
-          className="rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover"
+          className="rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
         >
           Start a New One
         </Link>
@@ -344,7 +344,7 @@ export function SessionRoom({
               }
               setSession(result.data);
             }}
-            className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
+            className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97] disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
           >
             {starting ? "Starting…" : "Start SyncUp"}
           </button>

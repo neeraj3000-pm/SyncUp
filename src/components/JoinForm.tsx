@@ -61,7 +61,7 @@ export function JoinForm({ sessionId }: { sessionId: string }) {
       <button
         type="submit"
         disabled={!name.trim() || pending}
-        className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
+        className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97] disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
       >
         {pending ? "Joining…" : "Join SyncUp"}
       </button>

@@ -56,7 +56,7 @@ function ErrorCard({ title, body }: { title: string; body: string }) {
       </div>
       <Link
         href="/join"
-        className="rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-colors hover:bg-surface-raised"
+        className="rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
       >
         Try another code
       </Link>

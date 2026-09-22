@@ -111,7 +111,7 @@ function CreateForm() {
               key={c.value}
               type="button"
               onClick={() => setCategory(c.value)}
-              className={`flex flex-col items-start gap-1 rounded-card border p-4 text-left transition-colors ${
+              className={`flex flex-col items-start gap-1 rounded-card border p-4 text-left transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                 category === c.value
                   ? "border-primary bg-surface-raised"
                   : "border-border bg-surface"
@@ -134,7 +134,7 @@ function CreateForm() {
             type="button"
             onClick={handleUseMyLocation}
             disabled={geoLoading}
-            className={`w-full rounded-card border px-4 py-3 text-left font-semibold transition-colors disabled:opacity-50 ${
+            className={`w-full rounded-card border px-4 py-3 text-left font-semibold transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] disabled:opacity-50 ${
               coords ? "border-primary bg-surface-raised" : "border-border bg-surface"
             }`}
           >
@@ -175,7 +175,7 @@ function CreateForm() {
               key={d.value}
               type="button"
               onClick={() => setDuration(d.value)}
-              className={`flex items-center justify-between rounded-card border px-4 py-3 text-left transition-colors ${
+              className={`flex items-center justify-between rounded-card border px-4 py-3 text-left transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                 duration === d.value
                   ? "border-primary bg-surface-raised"
                   : "border-border bg-surface"
@@ -212,7 +212,7 @@ function CreateForm() {
         <button
           type="submit"
           disabled={!name.trim() || pending || needsLocation}
-          className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
+          className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97] disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
         >
           {pending ? "Creating…" : "Create SyncUp"}
         </button>

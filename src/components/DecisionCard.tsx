@@ -123,7 +123,7 @@ export function DecisionCard({
           type="button"
           aria-label="Pass"
           onClick={() => commit("PASS")}
-          className="flex h-14 w-14 items-center justify-center rounded-pill border border-border bg-surface text-2xl shadow-md transition-transform duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+          className="flex h-14 w-14 items-center justify-center rounded-pill border border-border bg-surface text-2xl shadow-md transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
         >
           ✕
         </button>
@@ -131,7 +131,7 @@ export function DecisionCard({
           type="button"
           aria-label="Super Sync"
           onClick={() => commit("SYNC", true)}
-          className="flex h-14 w-14 items-center justify-center rounded-pill border border-border bg-surface text-2xl text-secondary shadow-md transition-transform duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+          className="flex h-14 w-14 items-center justify-center rounded-pill border border-border bg-surface text-2xl text-secondary shadow-md transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
         >
           ⭐
         </button>
@@ -139,7 +139,7 @@ export function DecisionCard({
           type="button"
           aria-label="Sync"
           onClick={() => commit("SYNC")}
-          className="flex h-14 w-14 items-center justify-center rounded-pill bg-primary text-2xl text-white shadow-md transition-transform duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
+          className="flex h-14 w-14 items-center justify-center rounded-pill bg-primary text-2xl text-white shadow-md transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
         >
           ✓
         </button>
