@@ -57,7 +57,7 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
           just pre-fills the category so it's one less tap. */}
       <Link
         href={`/create?category=${session.category}`}
-        className="w-full rounded-pill border border-border px-8 py-4 text-center text-lg font-semibold transition-colors hover:bg-surface-raised"
+        className="w-full rounded-pill border border-border px-8 py-4 text-center text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
       >
         Re-Sync
       </Link>

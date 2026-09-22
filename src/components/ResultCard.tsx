@@ -17,7 +17,7 @@ export function ResultCard({ match, onTap }: { match: MatchRow; onTap: () => voi
     <button
       type="button"
       onClick={onTap}
-      className="flex w-full items-center gap-4 rounded-card border border-border bg-surface p-3 text-left transition-colors hover:bg-surface-raised"
+      className="flex w-full items-center gap-4 rounded-card border border-border bg-surface p-3 text-left transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.98]"
     >
       {match.item.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element

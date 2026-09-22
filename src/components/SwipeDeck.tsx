@@ -163,14 +163,14 @@ export function SwipeDeck({
               <button
                 type="button"
                 onClick={onCreatorReveal}
-                className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover"
+                className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
               >
                 Reveal Results
               </button>
               <button
                 type="button"
                 onClick={() => setRevealPromptDismissed(true)}
-                className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-colors hover:bg-surface-raised"
+                className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
               >
                 Not Yet
               </button>
@@ -204,7 +204,7 @@ export function SwipeDeck({
           <button
             type="button"
             onClick={handleImDone}
-            className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover"
+            className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
           >
             I&apos;m Done
           </button>
@@ -212,7 +212,7 @@ export function SwipeDeck({
             type="button"
             onClick={handleShowMore}
             disabled={loadingMore}
-            className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-colors hover:bg-surface-raised disabled:opacity-50"
+            className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97] disabled:opacity-50"
           >
             {loadingMore ? "Loading…" : "Show Me 50 More"}
           </button>

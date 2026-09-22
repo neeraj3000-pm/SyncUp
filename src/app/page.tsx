@@ -17,7 +17,7 @@ export default function LandingPage() {
       <div className="flex w-full max-w-xs flex-col gap-4">
         <Link
           href="/create"
-          className="rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover"
+          className="rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
         >
           Start a SyncUp
         </Link>
@@ -26,7 +26,7 @@ export default function LandingPage() {
           <p className="text-sm text-foreground-muted">Already have a code?</p>
           <Link
             href="/join"
-            className="rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-colors hover:bg-surface-raised"
+            className="rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
           >
             Join a SyncUp
           </Link>
