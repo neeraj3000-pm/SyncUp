@@ -4,12 +4,16 @@ import { completeSessionByCreator, completeSessionByTimer } from "@/services/mat
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
+// Returns whether the session is actually COMPLETED now — a client whose
+// clock is fast/wrong-timezone can call this before the server-side
+// deadline has genuinely passed, and the caller must not navigate to
+// /results on the mere fact that this resolved without throwing.
 export async function completeSessionByTimerAction(
   sessionId: string,
-): Promise<ActionResult<null>> {
+): Promise<ActionResult<{ completed: boolean }>> {
   try {
-    await completeSessionByTimer(sessionId);
-    return { ok: true, data: null };
+    const completed = await completeSessionByTimer(sessionId);
+    return { ok: true, data: { completed } };
   } catch (error) {
     console.error("completeSessionByTimerAction failed:", error);
     return { ok: false, error: "Couldn't complete the session." };
