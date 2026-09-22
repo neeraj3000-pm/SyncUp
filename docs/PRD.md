@@ -1102,6 +1102,7 @@ The following references are inspiration only.
 They should not be copied.
 Reference 01
 Gen Z/Teens Job Discovery App with Time-Bound Gig Matching
+https://dribbble.com/shots/27306004-Gen-Z-Teens-Job-Discovery-App-with-Time-Bound-Gig-Matching
 Useful inspiration:
 Curated card stack
 Decision-first cards
@@ -1113,6 +1114,7 @@ The reference itself explicitly describes its design around curated stacks, time
 
 Reference 02
 Winner Dinner — Gamified Food Deciding App
+https://dribbble.com/shots/27483914-Winner-Dinner-Gamified-Food-Deciding-App
 Useful inspiration:
 Social decision-making
 Food discovery
