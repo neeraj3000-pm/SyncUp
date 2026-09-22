@@ -153,7 +153,7 @@ export function SwipeDeck({
 
   if (finished) {
     return (
-      <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
+      <div className="flex w-full flex-col items-center gap-6 text-center">
         <p className="text-lg font-semibold">You&apos;re done ✓</p>
 
         {everyoneFinished && !revealPromptDismissed ? (
@@ -184,7 +184,7 @@ export function SwipeDeck({
           <p className="text-sm text-foreground-muted">Waiting for everyone else to finish…</p>
         )}
 
-        <div className="w-full min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="w-full max-h-48 overflow-y-auto overscroll-contain">
           <SwipeProgress
             progress={progress}
             totalItems={items.length}
@@ -198,7 +198,7 @@ export function SwipeDeck({
 
   if (queue.length === 0) {
     return (
-      <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
+      <div className="flex w-full flex-col items-center gap-6 text-center">
         <p className="text-lg font-semibold">You&apos;ve seen all {items.length}.</p>
         <div className="flex w-full flex-col gap-3">
           <button
@@ -218,7 +218,7 @@ export function SwipeDeck({
           </button>
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
-        <div className="w-full min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="w-full max-h-48 overflow-y-auto overscroll-contain">
           <SwipeProgress
             progress={progress}
             totalItems={items.length}
@@ -234,7 +234,7 @@ export function SwipeDeck({
   const next = queue[1];
 
   return (
-    <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-4">
+    <div className="flex w-full flex-col items-center gap-4">
       <p className="text-sm text-foreground-muted">
         {totalSwiped}/{items.length}
       </p>
