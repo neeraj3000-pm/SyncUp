@@ -28,6 +28,11 @@ export default function JoinLandingPage() {
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           placeholder="K7XM2"
+          autoComplete="off"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="go"
           className="rounded-card border border-border bg-surface px-4 py-4 text-center font-mono text-3xl font-bold tracking-[0.2em] outline-none focus:border-primary"
         />
         <button

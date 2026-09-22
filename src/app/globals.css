@@ -76,6 +76,54 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* ── Mobile-native baseline ──────────────────────────────────────────────
+   The platform-layer fixes that separate "a website in a browser" from
+   something that feels installed — see .claude/skills/mobile-native. None
+   of this reproduces in desktop/emulated testing; it only shows up on a
+   real phone. */
+html {
+  /* Kills the gray/blue flash Android/iOS paint on every tap — the single
+     loudest "this is a website" tell. Every tappable element below gets
+     its own :active feedback instead. */
+  -webkit-tap-highlight-color: transparent;
+  /* Stops Safari/Chrome inflating font sizes in landscape. */
+  -webkit-text-size-adjust: 100%;
+}
+
+html,
+body {
+  /* Without this, scrolling past the top of the page triggers Android's
+     pull-to-refresh or iOS's whole-page rubber-band — fine on a plain
+     document, wrong for an app with its own scroll containers (the swipe
+     deck, a sheet). Inner scrollables opt back into their own contained
+     bounce with overscroll-behavior: contain (see DetailSheet). */
+  overscroll-behavior: none;
+}
+
+input,
+textarea,
+select {
+  /* iOS Safari zooms the page on focus if the input's text is under 16px,
+     and doesn't zoom back out on blur. Every input in this app already
+     sets a larger size, but this is the guaranteed floor for any future
+     one that forgets to. */
+  font-size: 16px;
+}
+
+button,
+a,
+[role="button"] {
+  /* Skips the ~300ms delay the browser otherwise waits before firing
+     click, to rule out a double-tap-to-zoom gesture — this element never
+     needs that. */
+  touch-action: manipulation;
+  /* A native control's label doesn't get selected on long-press; only
+     genuine page content should be selectable. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
