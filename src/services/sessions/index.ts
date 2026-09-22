@@ -107,12 +107,23 @@ export async function createSession({
       // The creator is the session's first participant — this is what lets
       // the waiting room (and the join screen's "X wants to decide...")
       // show a name for the creator without a separate account system.
-      const participant = await joinSession(
-        session.id,
-        creatorGuestId,
-        displayName,
-      );
-      return { session, participant };
+      //
+      // Inserted directly rather than going through the full joinSession()
+      // below: that function's rejoin-check, WAITING-status check, and
+      // participant-count check all exist to guard against real joiners
+      // hitting a session in some unknown state, but the session we just
+      // created a few lines up is guaranteed fresh (brand-new id, status
+      // WAITING, zero participants) — those three extra round trips were
+      // pure overhead for this specific case, and were a real chunk of why
+      // "Create SyncUp" felt slow to respond.
+      const { data: participantData, error: participantError } = await supabase
+        .from("participants")
+        .insert({ session_id: session.id, guest_id: creatorGuestId, display_name: displayName })
+        .select()
+        .single();
+
+      if (participantError) throw participantError;
+      return { session, participant: participantData as ParticipantRow };
     }
     // 23505 = unique_violation. Anything else is a real failure, surface it.
     if (error.code !== "23505") throw error;
@@ -188,38 +199,39 @@ export async function joinSession(
 ): Promise<ParticipantRow> {
   const supabase = await createClient();
 
-  // Rejoining (refresh, or opening the same link twice) should resolve back
-  // to the existing row rather than erroring on the unique constraint or
-  // creating a duplicate participant.
-  const { data: existing, error: existingError } = await supabase
-    .from("participants")
-    .select()
-    .eq("session_id", sessionId)
-    .eq("guest_id", guestId)
-    .maybeSingle();
+  // These three checks don't depend on each other's results, so running
+  // them one-after-another (as this originally did) was three sequential
+  // network round trips before a joiner could even see the waiting room —
+  // a real chunk of why joining felt slow. Firing them together cuts that
+  // to one round trip's worth of latency.
+  const [existingResult, sessionResult, countResult] = await Promise.all([
+    // Rejoining (refresh, or opening the same link twice) should resolve
+    // back to the existing row rather than erroring on the unique
+    // constraint or creating a duplicate participant.
+    supabase
+      .from("participants")
+      .select()
+      .eq("session_id", sessionId)
+      .eq("guest_id", guestId)
+      .maybeSingle(),
+    supabase.from("sessions").select("status").eq("id", sessionId).maybeSingle(),
+    supabase
+      .from("participants")
+      .select("id", { count: "exact", head: true })
+      .eq("session_id", sessionId),
+  ]);
 
-  if (existingError) throw existingError;
-  if (existing) return existing as ParticipantRow;
+  if (existingResult.error) throw existingResult.error;
+  if (existingResult.data) return existingResult.data as ParticipantRow;
 
-  const { data: session, error: sessionError } = await supabase
-    .from("sessions")
-    .select("status")
-    .eq("id", sessionId)
-    .maybeSingle();
-
-  if (sessionError) throw sessionError;
-  if (!session) throw new Error("SESSION_NOT_FOUND");
+  if (sessionResult.error) throw sessionResult.error;
+  if (!sessionResult.data) throw new Error("SESSION_NOT_FOUND");
   // PRD section 20: joining after the session has gone ACTIVE is disabled
   // for MVP rather than supported mid-session.
-  if (session.status !== "WAITING") throw new Error("SESSION_NOT_JOINABLE");
+  if (sessionResult.data.status !== "WAITING") throw new Error("SESSION_NOT_JOINABLE");
 
-  const { count, error: countError } = await supabase
-    .from("participants")
-    .select("id", { count: "exact", head: true })
-    .eq("session_id", sessionId);
-
-  if (countError) throw countError;
-  if ((count ?? 0) >= MAX_PARTICIPANTS) throw new Error("SESSION_FULL");
+  if (countResult.error) throw countResult.error;
+  if ((countResult.count ?? 0) >= MAX_PARTICIPANTS) throw new Error("SESSION_FULL");
 
   const { data, error } = await supabase
     .from("participants")
