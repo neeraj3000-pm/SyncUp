@@ -2,6 +2,7 @@
 
 import {
   createSession,
+  getParticipants,
   joinSession,
   startSession,
   type ParticipantRow,
@@ -101,6 +102,28 @@ export async function createSessionAction(input: {
     return { ok: true, data };
   } catch (error) {
     return { ok: false, error: toActionError(error) };
+  }
+}
+
+// Backstop for the waiting room's Realtime subscription (SessionRoom):
+// Supabase's WebSocket occasionally drops or delays an event, which was
+// leaving a joiner invisible to the rest of the group until someone
+// happened to reload — polling this every few seconds means a missed
+// Realtime event self-heals within one poll interval instead of needing a
+// manual refresh, same reconciliation pattern SwipeDeck already uses for
+// progress.
+export async function getParticipantsAction(
+  sessionId: string,
+): Promise<ActionResult<ParticipantRow[]>> {
+  if (typeof sessionId !== "string") {
+    return { ok: false, error: "Invalid request." };
+  }
+  try {
+    const data = await getParticipants(sessionId);
+    return { ok: true, data };
+  } catch (error) {
+    console.error("getParticipantsAction failed:", error);
+    return { ok: false, error: "Couldn't refresh participants." };
   }
 }
 
