@@ -14,7 +14,6 @@ import {
   getSessionItems,
   type SessionItemRow,
 } from "@/services/candidates";
-import type { SessionCategory } from "@/services/sessions";
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -54,7 +53,6 @@ export async function swipeAction(input: {
 // client can just replace its deck rather than reconcile a partial diff.
 export async function requestMoreCandidatesAction(input: {
   sessionId: string;
-  category: string;
 }): Promise<ActionResult<SessionItemRow[]>> {
   if (typeof input.sessionId !== "string") {
     return { ok: false, error: "Invalid request." };
@@ -62,7 +60,7 @@ export async function requestMoreCandidatesAction(input: {
 
   try {
     const nextBatch = (await getMaxBatchNumber(input.sessionId)) + 1;
-    await generateCandidatePool(input.sessionId, input.category as SessionCategory, nextBatch);
+    await generateCandidatePool(input.sessionId, nextBatch);
     const items = await getSessionItems(input.sessionId);
     return { ok: true, data: items };
   } catch (error) {

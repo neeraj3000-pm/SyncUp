@@ -38,14 +38,43 @@ function CreateForm() {
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // EAT only — mutually exclusive with areaText, see the location section
+  // below. Coordinates take priority when both happen to be set (shouldn't
+  // normally happen since picking one clears the other).
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [areaText, setAreaText] = useState("");
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const router = useRouter();
 
   const guestId = useGuestId();
 
+  const needsLocation = category === "EAT" && !coords && !areaText.trim();
+
+  function handleUseMyLocation() {
+    // Only ever called from this button tap — never on page load or when
+    // switching to Eat — so the permission prompt fires only when the
+    // person actually asks for it (PRD section 13).
+    setGeoError(null);
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setAreaText("");
+        setGeoLoading(false);
+      },
+      () => {
+        setGeoError("Couldn't get your location. Try entering an area instead.");
+        setGeoLoading(false);
+      },
+      { timeout: 10000 },
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmedName = name.trim();
-    if (!trimmedName || !guestId || pending) return;
+    if (!trimmedName || !guestId || pending || needsLocation) return;
 
     setPending(true);
     setError(null);
@@ -55,6 +84,9 @@ function CreateForm() {
       durationSeconds: duration,
       creatorGuestId: guestId,
       displayName: trimmedName,
+      locationLat: coords?.lat ?? null,
+      locationLng: coords?.lng ?? null,
+      locationLabel: areaText.trim() || null,
     });
 
     if (!result.ok) {
@@ -92,6 +124,44 @@ function CreateForm() {
           ))}
         </div>
       </section>
+
+      {category === "EAT" && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-sm font-semibold text-foreground-muted">
+            Where do you want to eat?
+          </h2>
+          <button
+            type="button"
+            onClick={handleUseMyLocation}
+            disabled={geoLoading}
+            className={`w-full rounded-card border px-4 py-3 text-left font-semibold transition-colors disabled:opacity-50 ${
+              coords ? "border-primary bg-surface-raised" : "border-border bg-surface"
+            }`}
+          >
+            {geoLoading
+              ? "Getting your location…"
+              : coords
+                ? "✓ Using your current location"
+                : "📍 Use my location"}
+          </button>
+          {geoError && <p className="text-sm text-red-500">{geoError}</p>}
+          <div className="flex items-center gap-3 text-xs text-foreground-muted">
+            <div className="h-px flex-1 bg-border" />
+            or
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <input
+            value={areaText}
+            onChange={(e) => {
+              setAreaText(e.target.value);
+              if (e.target.value) setCoords(null);
+            }}
+            placeholder="Choose an area, e.g. Indiranagar, Bangalore"
+            maxLength={100}
+            className="rounded-card border border-border bg-surface px-4 py-3 text-lg outline-none focus:border-primary"
+          />
+        </section>
+      )}
 
       <section className="flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-foreground-muted">
@@ -138,7 +208,7 @@ function CreateForm() {
         {error && <p className="text-sm text-red-500">{error}</p>}
         <button
           type="submit"
-          disabled={!name.trim() || pending}
+          disabled={!name.trim() || pending || needsLocation}
           className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover disabled:opacity-50"
         >
           {pending ? "Creating…" : "Create SyncUp"}
