@@ -5,7 +5,13 @@ import { SyncScore } from "@/components/SyncScore";
 // and how many people picked it. Tapping opens the detail sheet for
 // everything else (cast, trailer, where to watch).
 export function ResultCard({ match, onTap }: { match: MatchRow; onTap: () => void }) {
-  const meta = match.item.metadata as { year?: string | null };
+  const meta = match.item.metadata as {
+    year?: string | null;
+    cuisine?: string | null;
+    address?: string | null;
+  };
+  const subtitle =
+    match.item.category === "WATCH" ? meta.year : [meta.cuisine, meta.address].filter(Boolean).join(" · ");
 
   return (
     <button
@@ -26,7 +32,7 @@ export function ResultCard({ match, onTap }: { match: MatchRow; onTap: () => voi
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="truncate font-semibold">{match.item.title}</p>
-        <p className="text-sm text-foreground-muted">{meta.year}</p>
+        <p className="text-sm text-foreground-muted">{subtitle}</p>
         <p className="text-xs text-foreground-muted">
           {match.liked_count}/{match.participant_count} picked it
         </p>

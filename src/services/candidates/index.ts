@@ -2,19 +2,23 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getMoviePool } from "@/services/movies";
-import type { SessionCategory } from "@/services/sessions";
+import { getRestaurantPool } from "@/services/restaurants";
+import { getSessionById, type SessionCategory, type SessionRow } from "@/services/sessions";
 
 // The category-agnostic middle layer CLAUDE.md's architecture rule asks for:
 // session/matching code calls this, never a provider directly, and this is
 // the only place that switches on `category` to pick a provider.
-async function getCandidatesFromProvider(category: SessionCategory, batchNumber: number) {
-  switch (category) {
+async function getCandidatesFromProvider(session: SessionRow, batchNumber: number) {
+  switch (session.category) {
     case "WATCH":
       return getMoviePool(batchNumber);
     case "EAT":
-      // Restaurant provider lands in Sprint 5 (PRD build order) — until
-      // then a session created for EAT simply gets no candidates.
-      return [];
+      return getRestaurantPool(
+        session.location_lat !== null && session.location_lng !== null
+          ? { lat: session.location_lat, lng: session.location_lng }
+          : { label: session.location_label ?? "" },
+        batchNumber,
+      );
   }
 }
 
@@ -42,10 +46,12 @@ export interface SessionItemRow {
 // is trusted server-written data, not user input.
 export async function generateCandidatePool(
   sessionId: string,
-  category: SessionCategory,
   batchNumber: number,
 ): Promise<number> {
-  const candidates = await getCandidatesFromProvider(category, batchNumber);
+  const session = await getSessionById(sessionId);
+  if (!session) throw new Error("SESSION_NOT_FOUND");
+
+  const candidates = await getCandidatesFromProvider(session, batchNumber);
   if (candidates.length === 0) return 0;
 
   const service = createServiceClient();
@@ -53,7 +59,7 @@ export async function generateCandidatePool(
   const { data: upsertedItems, error: upsertError } = await service
     .from("items")
     .upsert(
-      candidates.map((c) => ({ category, ...c })),
+      candidates.map((c) => ({ category: session.category, ...c })),
       { onConflict: "category,source,external_id", ignoreDuplicates: false },
     )
     .select("id, external_id");

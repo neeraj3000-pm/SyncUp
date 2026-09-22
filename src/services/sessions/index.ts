@@ -270,7 +270,7 @@ export async function startSession(
   // means the timer (below) starts counting down from when swiping can
   // actually begin, not from before the TMDB calls even finished.
   const { generateCandidatePool } = await import("@/services/candidates");
-  await generateCandidatePool(sessionId, session.category, 1);
+  await generateCandidatePool(sessionId, 1);
 
   const startedAt = new Date();
   // null duration_seconds ("No time limit") means no expiry — SessionTimer

@@ -13,6 +13,7 @@ import {
 } from "@/services/swipes/actions";
 import { DecisionCard } from "@/components/DecisionCard";
 import { MovieCard } from "@/components/MovieCard";
+import { RestaurantCard } from "@/components/RestaurantCard";
 import { SwipeProgress } from "@/components/SwipeProgress";
 
 const PROGRESS_POLL_MS = 4000;
@@ -27,7 +28,7 @@ function renderCard(category: SessionCategory, item: ItemRow) {
     case "WATCH":
       return <MovieCard item={item} />;
     case "EAT":
-      return null; // restaurants land in Sprint 5
+      return <RestaurantCard item={item} />;
   }
 }
 
@@ -122,7 +123,7 @@ export function SwipeDeck({
   async function handleShowMore() {
     setLoadingMore(true);
     setError(null);
-    const result = await requestMoreCandidatesAction({ sessionId, category });
+    const result = await requestMoreCandidatesAction({ sessionId });
     setLoadingMore(false);
     if (!result.ok) {
       setError(result.error);
