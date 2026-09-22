@@ -18,7 +18,7 @@ export default async function SessionPage({
   ]);
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-8 px-6 py-12">
+    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-center gap-8 overflow-y-auto overscroll-contain px-6 py-12">
       <SessionRoom session={session} participants={participants} sessionItems={sessionItems} />
     </main>
   );

@@ -184,12 +184,14 @@ export function SwipeDeck({
           <p className="text-sm text-foreground-muted">Waiting for everyone else to finish…</p>
         )}
 
-        <SwipeProgress
-          progress={progress}
-          totalItems={items.length}
-          myParticipantId={participantId}
-          hostParticipantId={hostParticipantId}
-        />
+        <div className="w-full max-h-48 overflow-y-auto overscroll-contain">
+          <SwipeProgress
+            progress={progress}
+            totalItems={items.length}
+            myParticipantId={participantId}
+            hostParticipantId={hostParticipantId}
+          />
+        </div>
       </div>
     );
   }
@@ -216,12 +218,14 @@ export function SwipeDeck({
           </button>
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
-        <SwipeProgress
-          progress={progress}
-          totalItems={items.length}
-          myParticipantId={participantId}
-          hostParticipantId={hostParticipantId}
-        />
+        <div className="w-full max-h-48 overflow-y-auto overscroll-contain">
+          <SwipeProgress
+            progress={progress}
+            totalItems={items.length}
+            myParticipantId={participantId}
+            hostParticipantId={hostParticipantId}
+          />
+        </div>
       </div>
     );
   }
@@ -230,12 +234,18 @@ export function SwipeDeck({
   const next = queue[1];
 
   return (
-    <div className="flex w-full flex-1 flex-col items-center gap-4">
+    <div className="flex w-full flex-col items-center gap-4">
       <p className="text-sm text-foreground-muted">
         {totalSwiped}/{items.length}
       </p>
 
-      <div className="relative h-[60vh] w-full max-w-sm">
+      {/* Fixed height, never squeezed: the card is this screen's one
+          primary action (PRD's "one obvious primary action per screen"),
+          so it always stays fully visible. Only the progress list below —
+          secondary info — gives up space and scrolls internally when a
+          large group doesn't fit, rather than the whole screen scrolling
+          and pushing the card itself partway off-screen. */}
+      <div className="relative h-[60dvh] w-full max-w-sm shrink-0">
         {next && (
           <div className="pointer-events-none absolute inset-0 scale-95 translate-y-2 opacity-70">
             {renderCard(category, next)}
@@ -249,12 +259,14 @@ export function SwipeDeck({
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <SwipeProgress
-        progress={progress}
-        totalItems={items.length}
-        myParticipantId={participantId}
-        hostParticipantId={hostParticipantId}
-      />
+      <div className="w-full min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <SwipeProgress
+          progress={progress}
+          totalItems={items.length}
+          myParticipantId={participantId}
+          hostParticipantId={hostParticipantId}
+        />
+      </div>
     </div>
   );
 }

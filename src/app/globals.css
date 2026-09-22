@@ -96,7 +96,13 @@ body {
      pull-to-refresh or iOS's whole-page rubber-band — fine on a plain
      document, wrong for an app with its own scroll containers (the swipe
      deck, a sheet). Inner scrollables opt back into their own contained
-     bounce with overscroll-behavior: contain (see DetailSheet). */
+     bounce with overscroll-behavior: contain (see DetailSheet). This pairs
+     with layout.tsx's h-dvh + overflow-hidden on body: the document itself
+     never scrolls at all, every screen fits (or gets its own explicit
+     internal scroll region) within the visible viewport — the fixed,
+     app-like shell this app was missing, and the direct fix for the
+     ambiguous page-scroll-vs-card-swipe conflict flagged in Sprint 5
+     testing. */
   overscroll-behavior: none;
 }
 

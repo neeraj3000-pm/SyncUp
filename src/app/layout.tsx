@@ -38,8 +38,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${manrope.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${manrope.variable} h-dvh antialiased`}>
+      {/* The one hard boundary: nothing scrolls at the document level, ever
+          — see globals.css's comment on why. Any screen with more content
+          than fits provides its own internal scroll region instead of
+          letting the whole page grow past the viewport (the scroll/swipe
+          gesture conflict flagged during Sprint 5 testing). Safe-area
+          padding lives here once, so no individual page has to remember
+          it. */}
+      <body className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+        {children}
+      </body>
     </html>
   );
 }
