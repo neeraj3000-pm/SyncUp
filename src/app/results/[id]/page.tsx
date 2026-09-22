@@ -15,7 +15,7 @@ export default async function ResultsPage({
 
   if (session.status !== "COMPLETED") {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-6 px-6 py-12 text-center">
+      <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-center gap-6 overflow-y-auto overscroll-contain px-6 py-12 text-center">
         <p className="text-foreground-muted">
           Results aren&apos;t ready yet — this SyncUp is still in progress.
         </p>
@@ -32,7 +32,7 @@ export default async function ResultsPage({
   const matches = await getMatches(id);
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-6 py-12">
+    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col gap-8 overflow-y-auto overscroll-contain px-6 py-12">
       <ResultsView session={session} matches={matches} />
     </main>
   );

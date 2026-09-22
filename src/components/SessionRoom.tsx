@@ -242,7 +242,7 @@ export function SessionRoom({
 
   if (session.status === "ACTIVE") {
     return (
-      <div className="flex w-full flex-1 flex-col items-center gap-6 text-center">
+      <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
         {session.expires_at && <SessionTimer expiresAt={session.expires_at} />}
 
         {sessionItems.length === 0 ? (

@@ -100,7 +100,7 @@ function CreateForm() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-10 px-6 py-12">
+    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col gap-10 overflow-y-auto overscroll-contain px-6 py-12">
       <section className="flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-foreground-muted">
           What are you deciding?
