@@ -344,7 +344,7 @@ export function SessionRoom({
               }
               setSession(result.data);
             }}
-            className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover disabled:opacity-50"
+            className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary-hover disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
           >
             {starting ? "Starting…" : "Start SyncUp"}
           </button>

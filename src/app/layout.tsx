@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -38,7 +39,16 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${manrope.variable} h-dvh antialiased`}>
+    <html
+      lang="en"
+      className={`${manrope.variable} h-dvh antialiased`}
+      // The blocking script below deliberately sets data-theme on this
+      // element before React hydrates, so its attributes here will
+      // legitimately differ from what the server rendered — this tells
+      // React that's expected, not a bug to warn about (the standard fix
+      // for this pattern, same as libraries like next-themes use).
+      suppressHydrationWarning
+    >
       {/* The one hard boundary: nothing scrolls at the document level, ever
           — see globals.css's comment on why. Any screen with more content
           than fits provides its own internal scroll region instead of
@@ -47,7 +57,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           padding lives here once, so no individual page has to remember
           it. */}
       <body className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+        {/* Applies a saved theme choice to <html> before the rest of the
+            page paints — without this, ThemeToggle's own effect would run
+            after first paint and visibly flash the wrong theme for a
+            moment. Plain, synchronous, no dependency on React having
+            hydrated yet; must stay in sync with ThemeToggle's storage key. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('syncup-theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`,
+          }}
+        />
         {children}
+        <ThemeToggle />
       </body>
     </html>
   );
