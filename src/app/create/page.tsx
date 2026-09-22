@@ -158,6 +158,8 @@ function CreateForm() {
             }}
             placeholder="Choose an area, e.g. Indiranagar, Bangalore"
             maxLength={100}
+            autoComplete="off"
+            enterKeyHint="search"
             className="rounded-card border border-border bg-surface px-4 py-3 text-lg outline-none focus:border-primary"
           />
         </section>
@@ -192,6 +194,7 @@ function CreateForm() {
         </h2>
         <input
           autoComplete="name"
+          enterKeyHint="done"
           maxLength={40}
           value={name}
           onChange={(e) => setName(e.target.value)}

@@ -58,7 +58,7 @@ function DetailSheetShell({
       onPointerDown={(e) => e.stopPropagation()}
     >
       <div
-        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-card bg-surface p-6 sm:rounded-card"
+        className="max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-card bg-surface p-6 sm:rounded-card"
         onClick={(e) => e.stopPropagation()}
       >
         <button

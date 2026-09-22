@@ -17,7 +17,23 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#ff5a36",
+  // viewportFit lets the page draw under the notch/Dynamic Island — without
+  // it every env(safe-area-inset-*) value below is just 0px, so this has to
+  // come first. interactiveWidget makes the on-screen keyboard shrink the
+  // layout viewport on Android the same way it already does on iOS, so
+  // 100dvh and bottom-pinned buttons react to it correctly there too.
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+  colorScheme: "light dark",
+  // Matches the actual background color at the top of the page in each
+  // theme (globals.css's --background), not the brand orange — this drives
+  // the phone's status bar / browser chrome color, and using the brand
+  // color there looks like a mismatched, unfinished web page rather than
+  // an installed app.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fdf7f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#15131c" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

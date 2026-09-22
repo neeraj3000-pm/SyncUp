@@ -47,6 +47,7 @@ export function JoinForm({ sessionId }: { sessionId: string }) {
           name="name"
           autoFocus
           autoComplete="name"
+          enterKeyHint="done"
           maxLength={40}
           value={name}
           onChange={(e) => setName(e.target.value)}
