@@ -129,7 +129,7 @@ export function DecisionCard({
           type="button"
           aria-label="Super Sync"
           onClick={() => commit("SYNC", true)}
-          className="flex h-11 w-11 items-center justify-center rounded-pill border border-border bg-surface text-lg text-secondary shadow-md transition-colors hover:bg-surface-raised"
+          className="flex h-14 w-14 items-center justify-center rounded-pill border border-border bg-surface text-2xl text-secondary shadow-md transition-colors hover:bg-surface-raised"
         >
           ⭐
         </button>
