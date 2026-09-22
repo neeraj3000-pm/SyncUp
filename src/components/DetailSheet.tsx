@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ItemRow } from "@/services/candidates";
 import { getMovieDetailAction } from "@/services/movies/actions";
 import type { MovieDetail } from "@/services/movies";
 import { getRestaurantDetailAction } from "@/services/restaurants/actions";
 import type { RestaurantDetail } from "@/services/restaurants";
+
+// Tap-triggered, not a drag/momentum gesture — so this follows the same
+// "safe house style" as the rest of the app (apple-design skill): critically
+// damped, no bounce. Only flicks (DecisionCard) earn bounce.
+const SHEET_SPRING = { type: "spring", bounce: 0, duration: 0.35 } as const;
 
 // PRD section 24/35: "the card helps you decide, the detail view helps you
 // investigate" — this is where the data the swipe card deliberately
@@ -35,6 +41,25 @@ function DetailSheetShell({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  // The parent mounts/unmounts this component instantly (its own onClose
+  // just flips a boolean), so there's nothing here that would normally play
+  // an exit animation before removal. Deferring the *real* onClose until
+  // AnimatePresence finishes exiting — rather than changing the parent's
+  // conditional-render call sites — keeps this self-contained.
+  const [visible, setVisible] = useState(true);
+  const reduceMotion = useReducedMotion();
+
+  // apple-design skill: reduced motion gets a plain cross-fade, no
+  // slide/scale — the transform-based "materialize" is what we're opting
+  // out of, not motion entirely.
+  const sheetVariants = reduceMotion
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+    : {
+        initial: { opacity: 0, y: 24, scale: 0.96 },
+        animate: { opacity: 1, y: 0, scale: 1 },
+        exit: { opacity: 0, y: 24, scale: 0.96 },
+      };
+
   // Rendered via a portal straight into <body>: this sheet can be opened
   // from inside a card that sits inside DecisionCard's drag wrapper — that
   // wrapper always has an inline `transform` (even `translateX(0px)` at
@@ -44,34 +69,45 @@ function DetailSheetShell({
   // (possibly mid-drag, offset) card box instead of the real viewport,
   // which is why the close button could end up positioned off-screen.
   return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center"
-      onClick={onClose}
-      // React re-implements bubbling through the *component* tree for
-      // portals, not the DOM tree — so a pointerdown here still reaches
-      // DecisionCard's drag handler above it (the swipe cards' own info
-      // buttons already guard against this the same way). Without this,
-      // DecisionCard calls setPointerCapture on itself, which silently
-      // retargets the following pointerup/click away from whatever was
-      // actually tapped in here (e.g. this Close button), so the button
-      // visibly exists but doesn't respond.
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      <div
-        className="max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-card bg-surface p-6 sm:rounded-card"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="mb-4 ml-auto flex h-8 w-8 items-center justify-center rounded-pill border border-border text-lg"
+    <AnimatePresence onExitComplete={onClose}>
+      {visible && (
+        <motion.div
+          key="detail-sheet-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0.15 : 0.2 }}
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center"
+          onClick={() => setVisible(false)}
+          // React re-implements bubbling through the *component* tree for
+          // portals, not the DOM tree — so a pointerdown here still reaches
+          // DecisionCard's drag handler above it (the swipe cards' own info
+          // buttons already guard against this the same way). Without this,
+          // DecisionCard calls setPointerCapture on itself, which silently
+          // retargets the following pointerup/click away from whatever was
+          // actually tapped in here (e.g. this Close button), so the button
+          // visibly exists but doesn't respond.
+          onPointerDown={(e) => e.stopPropagation()}
         >
-          ✕
-        </button>
-        {children}
-      </div>
-    </div>,
+          <motion.div
+            {...sheetVariants}
+            transition={reduceMotion ? { duration: 0.15 } : SHEET_SPRING}
+            className="max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-card bg-surface p-6 sm:rounded-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setVisible(false)}
+              aria-label="Close"
+              className="mb-4 ml-auto flex h-8 w-8 items-center justify-center rounded-pill border border-border text-lg transition-transform duration-150 ease-out active:scale-[0.97]"
+            >
+              ✕
+            </button>
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body,
   );
 }
