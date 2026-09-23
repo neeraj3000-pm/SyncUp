@@ -51,7 +51,7 @@ External API keys (TMDB, Google Places, Supabase service role) live in server-si
 
 ## Design system
 
-Palette: SyncUp Orange/Coral (primary — CTAs, Sync actions), Electric Purple (secondary — sparingly, gradients/reveal moments), Branded Green (Sync/agreement states only). Warm off-white light theme (not pure white), deep midnight dark theme (not pure black). Font: Manrope (fallbacks: Plus Jakarta Sans, DM Sans, Inter). Avoid: generic SaaS look, Tinder-clone look, over-gamified kids'-app look. Respect `prefers-reduced-motion`.
+Palette: "Modern Editorial" — Coral/Red (primary — CTAs, Sync actions, the reveal-card gradient), cool gray-blue (secondary — Super Sync, muted captions), Branded Green (Sync/agreement states only, unaffected by palette choice). Warm cream light theme (not pure white), deep ink-navy dark theme (not pure black) — light and dark reuse the same token values, just swapping which end is background vs. foreground, rather than two separate palettes. Exact tokens live in `src/app/globals.css`, treat that file as ground truth over this summary. Font: Manrope (fallbacks: Plus Jakarta Sans, DM Sans, Inter). Avoid: generic SaaS look, Tinder-clone look, over-gamified kids'-app look. Respect `prefers-reduced-motion`.
 
 ## Build order (from PRD — follow this sequence, don't skip ahead)
 
