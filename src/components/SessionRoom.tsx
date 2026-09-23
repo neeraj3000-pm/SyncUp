@@ -5,7 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useGuestId, useStoredParticipantId } from "@/lib/guest";
-import { getParticipantsAction, startSessionAction } from "@/services/sessions/actions";
+import {
+  getParticipantsAction,
+  getSessionAction,
+  startSessionAction,
+} from "@/services/sessions/actions";
 import type { ParticipantRow, SessionRow } from "@/services/sessions";
 import type { SessionItemRow } from "@/services/candidates";
 import { getSessionItemsAction } from "@/services/candidates/actions";
@@ -149,6 +153,28 @@ export function SessionRoom({
       document.removeEventListener("visibilitychange", checkExpiry);
     };
   }, [session.status, session.expires_at, session.id, router, clockOffsetMs]);
+
+  // Backstop for the Realtime subscription's "sessions" UPDATE handler
+  // below, same idea as the participants poll above: a dropped or delayed
+  // WebSocket event was leaving a screen stuck on the waiting room after
+  // someone else started the session, or on the swipe deck after someone
+  // else ended it, until the person manually refreshed. Runs for both
+  // WAITING (catches the start) and ACTIVE (catches an end triggered by
+  // another participant, or by the timer firing on another device) —
+  // nothing to reconcile once COMPLETED/EXPIRED/CANCELLED.
+  useEffect(() => {
+    if (session.status !== "WAITING" && session.status !== "ACTIVE") return;
+    let cancelled = false;
+    const interval = setInterval(() => {
+      getSessionAction(session.id).then((result) => {
+        if (!cancelled && result.ok && result.data) setSession(result.data);
+      });
+    }, PARTICIPANTS_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [session.status, session.id]);
 
   // Realtime: participant joins and the session's own status/timer fields
   // (PRD section 44). The server remains authoritative — this just relays

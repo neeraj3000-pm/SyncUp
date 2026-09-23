@@ -97,7 +97,17 @@ export function DecisionCard({
         // at the same time as that, racing against it.
         dragMomentum={false}
         onDragEnd={handleDragEnd}
-        style={{ x, rotate, touchAction: "pan-y" }}
+        // A custom spring-driven gesture, not a simple horizontal carousel
+        // (mobile-native skill's distinction) — and the page itself never
+        // scrolls (Sprint 9's fixed-viewport shell), so there's no
+        // legitimate vertical pan for "pan-y" to reserve here. Leaving it
+        // gave iOS's native gesture recognizer standing to still grab a
+        // swipe with any vertical component (nearly all real ones have
+        // some) before JS's preventDefault took over, which is what showed
+        // up as a scrollbar/rubber-band flash interrupting the drag.
+        // touch-action: none hands every axis to this element's own
+        // pointer handling, full stop.
+        style={{ x, rotate, touchAction: "none" }}
         className="relative min-h-0 flex-1 cursor-grab select-none active:cursor-grabbing"
       >
         <motion.div
