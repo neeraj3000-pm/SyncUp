@@ -3,6 +3,7 @@
 import {
   createSession,
   getParticipants,
+  getSessionById,
   joinSession,
   startSession,
   type ParticipantRow,
@@ -124,6 +125,25 @@ export async function getParticipantsAction(
   } catch (error) {
     console.error("getParticipantsAction failed:", error);
     return { ok: false, error: "Couldn't refresh participants." };
+  }
+}
+
+// Backstop for the same Realtime subscription's other job (SessionRoom
+// also relays "UPDATE" events on the sessions row itself, not just
+// participant joins) — a dropped/delayed event here was leaving a session
+// stuck showing the waiting room after someone else started it, or the
+// swipe deck after someone else ended it, until a manual refresh. Same
+// self-healing poll pattern as getParticipantsAction above.
+export async function getSessionAction(sessionId: string): Promise<ActionResult<SessionRow | null>> {
+  if (typeof sessionId !== "string") {
+    return { ok: false, error: "Invalid request." };
+  }
+  try {
+    const data = await getSessionById(sessionId);
+    return { ok: true, data };
+  } catch (error) {
+    console.error("getSessionAction failed:", error);
+    return { ok: false, error: "Couldn't refresh session status." };
   }
 }
 
