@@ -266,6 +266,9 @@ export function SessionRoom({
   if (session.status === "ACTIVE") {
     return (
       <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
+        <h1 className="sr-only">
+          Deciding {CATEGORY_LABEL[session.category] ?? session.category}
+        </h1>
         {session.expires_at && (
           <SessionTimer expiresAt={session.expires_at} clockOffsetMs={clockOffsetMs} />
         )}

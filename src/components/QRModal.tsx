@@ -20,7 +20,7 @@ export function QRModal({
   const url = `${window.location.origin}${path}`;
 
   return (
-    <Sheet onClose={onClose}>
+    <Sheet onClose={onClose} title="Scan to join">
       <div className="flex flex-col items-center gap-6 text-center">
         <div className="flex flex-col gap-1">
           <h2 className="text-xl font-bold leading-tight tracking-tight">Scan to join</h2>

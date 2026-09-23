@@ -28,6 +28,7 @@ export default function JoinLandingPage() {
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           placeholder="K7XM2"
+          aria-label="SyncUp code"
           autoComplete="off"
           autoCapitalize="characters"
           autoCorrect="off"

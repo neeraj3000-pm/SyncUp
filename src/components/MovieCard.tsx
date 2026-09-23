@@ -52,7 +52,7 @@ export function MovieCard({ item }: { item: ItemRow }) {
         aria-label="More details"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={() => setShowDetail(true)}
-        className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-pill bg-black/50 text-lg font-bold text-white backdrop-blur-sm"
+        className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-pill bg-black/50 text-lg font-bold text-white backdrop-blur-sm"
       >
         ⓘ
       </button>

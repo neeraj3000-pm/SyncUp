@@ -37,7 +37,7 @@ export function JoinSessionView({
   return (
     <div className="flex w-full flex-col items-center gap-8 text-center">
       <div className="flex flex-col gap-2">
-        <p className="text-lg">
+        <h1 className="text-lg">
           {creatorName ? (
             <>
               <span className="font-semibold">{creatorName}</span> wants to
@@ -46,7 +46,7 @@ export function JoinSessionView({
           ) : (
             <>Someone wants to decide {label}</>
           )}
-        </p>
+        </h1>
       </div>
 
       <div className="w-full">

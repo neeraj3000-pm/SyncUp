@@ -248,7 +248,7 @@ export function SwipeDeck({
 
   return (
     <div className="flex w-full flex-col items-center gap-4">
-      <p className="text-sm text-foreground-muted">
+      <p className="text-sm text-foreground-muted" role="status" aria-live="polite">
         {totalSwiped}/{items.length}
       </p>
 
