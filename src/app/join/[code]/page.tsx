@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { getCreatorName, getSessionByCode } from "@/services/sessions";
+import { ErrorScreen } from "@/components/ErrorScreen";
 import { JoinSessionView } from "./JoinSessionView";
 
 const ENDED_STATUSES = new Set(["COMPLETED", "EXPIRED", "CANCELLED"]);
+const TRY_ANOTHER_CODE = { label: "Try another code", href: "/join" } as const;
 
 export default async function JoinByCodePage({
   params,
@@ -14,24 +15,32 @@ export default async function JoinByCodePage({
 
   if (!session) {
     return (
-      <ErrorCard
+      <ErrorScreen
         title="We couldn't find that SyncUp."
         body="Check the code and try again."
+        action={TRY_ANOTHER_CODE}
       />
     );
   }
 
   if (session.status === "ACTIVE") {
     return (
-      <ErrorCard
+      <ErrorScreen
         title="This SyncUp has already started."
         body="Ask for a new invite once they start another one."
+        action={TRY_ANOTHER_CODE}
       />
     );
   }
 
   if (ENDED_STATUSES.has(session.status)) {
-    return <ErrorCard title="This SyncUp has ended." body="Start a new one instead." />;
+    return (
+      <ErrorScreen
+        title="This SyncUp has ended."
+        body="Start a new one instead."
+        action={TRY_ANOTHER_CODE}
+      />
+    );
   }
 
   const creatorName = await getCreatorName(session.id);
@@ -43,23 +52,6 @@ export default async function JoinByCodePage({
         category={session.category}
         creatorName={creatorName}
       />
-    </main>
-  );
-}
-
-function ErrorCard({ title, body }: { title: string; body: string }) {
-  return (
-    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-center gap-6 overflow-y-auto overscroll-contain px-6 py-12 text-center">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold leading-tight tracking-tight">{title}</h1>
-        <p className="text-foreground-muted">{body}</p>
-      </div>
-      <Link
-        href="/join"
-        className="rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
-      >
-        Try another code
-      </Link>
     </main>
   );
 }

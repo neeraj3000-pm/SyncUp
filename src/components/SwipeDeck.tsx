@@ -109,6 +109,10 @@ export function SwipeDeck({
   function handleSwipe(item: ItemRow, direction: "SYNC" | "PASS", superLiked = false) {
     if (advancingRef.current) return;
     advancingRef.current = true;
+    // A previous swipe's failure message is stale the moment another swipe
+    // is attempted — leaving it up would misreport an already-resolved
+    // problem as still ongoing once this one succeeds.
+    setError(null);
 
     swipeAction({ sessionId, participantId, itemId: item.id, direction, superLiked }).then(
       (result) => {
@@ -135,9 +139,18 @@ export function SwipeDeck({
   }
 
   async function handleImDone() {
+    // Optimistic: the "You're done" screen appears immediately rather than
+    // waiting on the round trip. But that screen never renders `error` (it
+    // has nothing to retry from), so a failure has to roll finished back to
+    // false — otherwise this fails silently, leaving someone on a "done"
+    // screen the server never actually recorded, with no way back to retry.
     setFinished(true);
+    setError(null);
     const result = await markFinishedAction(participantId);
-    if (!result.ok) setError(result.error);
+    if (!result.ok) {
+      setFinished(false);
+      setError(result.error);
+    }
   }
 
   if (queue === null) {
