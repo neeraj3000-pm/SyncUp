@@ -11,6 +11,7 @@ import type { SessionItemRow } from "@/services/candidates";
 import { getSessionItemsAction } from "@/services/candidates/actions";
 import { completeSessionByCreatorAction, completeSessionByTimerAction } from "@/services/matching/actions";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
+import { QRModal } from "@/components/QRModal";
 import { ParticipantList } from "@/components/ParticipantList";
 import { SessionTimer } from "@/components/SessionTimer";
 import { SwipeDeck } from "@/components/SwipeDeck";
@@ -45,6 +46,7 @@ export function SessionRoom({
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const timerFiredRef = useRef(false);
   // How far off this device's own clock is from the server's — a laptop
   // with a fast clock or the wrong timezone otherwise makes the visual
@@ -314,9 +316,24 @@ export function SessionRoom({
         </p>
       </div>
 
-      <div className="w-full">
+      <div className="flex w-full flex-col gap-3">
         <CopyLinkButton path={`/join/${session.code}`} />
+        <button
+          type="button"
+          onClick={() => setShowQR(true)}
+          className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+        >
+          Show QR Code
+        </button>
       </div>
+
+      {showQR && (
+        <QRModal
+          path={`/join/${session.code}`}
+          code={session.code}
+          onClose={() => setShowQR(false)}
+        />
+      )}
 
       <ParticipantList
         participants={participants}
