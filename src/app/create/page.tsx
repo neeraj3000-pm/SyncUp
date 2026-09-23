@@ -1,9 +1,14 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setStoredParticipantId, useGuestId } from "@/lib/guest";
 import { createSessionAction } from "@/services/sessions/actions";
+import {
+  getLocationDetailAction,
+  getLocationSuggestionsAction,
+} from "@/services/location/actions";
+import type { LocationSuggestion } from "@/services/location";
 
 const CATEGORIES = [
   { value: "WATCH", emoji: "🎬", label: "Watch", helper: "Movies and more" },
@@ -42,14 +47,81 @@ function CreateForm() {
   // below. Coordinates take priority when both happen to be set (shouldn't
   // normally happen since picking one clears the other).
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  // Which of the two ways to get coordinates set them — otherwise the "Use
+  // my location" button can't tell its own GPS result apart from a picked
+  // autocomplete suggestion, and would claim "using your current location"
+  // for somewhere the person just typed.
+  const [coordsSource, setCoordsSource] = useState<"gps" | "search" | null>(null);
   const [areaText, setAreaText] = useState("");
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
+  // A session token groups the autocomplete keystrokes for one search
+  // together with the Place Details call that follows a pick, so Google
+  // bills the whole flow once instead of per request — null between
+  // searches, generated on the first keystroke, discarded after a pick.
+  // A ref, not state: it's read inside the effect/handlers below but never
+  // drives a render, so there's nothing for React to re-render over.
+  const sessionTokenRef = useRef<string | null>(null);
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [resolvingPlaceId, setResolvingPlaceId] = useState<string | null>(null);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
   const router = useRouter();
 
   const guestId = useGuestId();
 
   const needsLocation = category === "EAT" && !coords && !areaText.trim();
+
+  // Debounced: fetches suggestions ~300ms after typing stops, not per
+  // keystroke — coords already set (just picked a suggestion) means this is
+  // the text catching up to that pick, not a fresh search, so it skips.
+  useEffect(() => {
+    // Every path that empties areaText or sets coords (onChange, the two
+    // "Use my location" outcomes, a successful pick) already clears
+    // suggestions itself at the source — nothing left for this branch to do
+    // but bail out.
+    if (!areaText.trim() || coords) return;
+
+    const token = sessionTokenRef.current ?? crypto.randomUUID();
+    sessionTokenRef.current = token;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const result = await getLocationSuggestionsAction(areaText, token);
+      if (cancelled) return;
+      if (result.ok) {
+        setSuggestions(result.data);
+        setShowSuggestions(true);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [areaText, coords]);
+
+  async function handlePickSuggestion(suggestion: LocationSuggestion) {
+    setShowSuggestions(false);
+    setSuggestions([]);
+    setSuggestError(null);
+    setResolvingPlaceId(suggestion.placeId);
+
+    const token = sessionTokenRef.current ?? crypto.randomUUID();
+    const result = await getLocationDetailAction(suggestion.placeId, token);
+    setResolvingPlaceId(null);
+    // The session ends at the pick regardless of outcome — a retry after a
+    // failed resolve is a new search, not a continuation of this one.
+    sessionTokenRef.current = null;
+
+    if (!result.ok) {
+      setSuggestError(result.error);
+      return;
+    }
+    setCoords({ lat: result.data.lat, lng: result.data.lng });
+    setCoordsSource("search");
+    setAreaText(suggestion.text);
+  }
 
   function handleUseMyLocation() {
     // Only ever called from this button tap — never on page load or when
@@ -60,6 +132,7 @@ function CreateForm() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setCoordsSource("gps");
         setAreaText("");
         setGeoLoading(false);
       },
@@ -135,12 +208,12 @@ function CreateForm() {
             onClick={handleUseMyLocation}
             disabled={geoLoading}
             className={`w-full rounded-card border px-4 py-3 text-left font-semibold transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] disabled:opacity-50 ${
-              coords ? "border-primary bg-surface-raised" : "border-border bg-surface"
+              coordsSource === "gps" ? "border-primary bg-surface-raised" : "border-border bg-surface"
             }`}
           >
             {geoLoading
               ? "Getting your location…"
-              : coords
+              : coordsSource === "gps"
                 ? "✓ Using your current location"
                 : "📍 Use my location"}
           </button>
@@ -150,18 +223,63 @@ function CreateForm() {
             or
             <div className="h-px flex-1 bg-border" />
           </div>
-          <input
-            value={areaText}
-            onChange={(e) => {
-              setAreaText(e.target.value);
-              if (e.target.value) setCoords(null);
-            }}
-            placeholder="Choose an area, e.g. Indiranagar, Bangalore"
-            maxLength={100}
-            autoComplete="off"
-            enterKeyHint="search"
-            className="rounded-card border border-border bg-surface px-4 py-3 text-lg outline-none focus:border-primary"
-          />
+          <div className="relative">
+            <input
+              value={areaText}
+              onChange={(e) => {
+                const value = e.target.value;
+                setAreaText(value);
+                if (value) {
+                  setCoords(null);
+                  setCoordsSource(null);
+                }
+                if (!value.trim()) {
+                  setSuggestions([]);
+                  setShowSuggestions(false);
+                  sessionTokenRef.current = null;
+                }
+              }}
+              onFocus={() => {
+                if (suggestions.length > 0) setShowSuggestions(true);
+              }}
+              onBlur={() => setShowSuggestions(false)}
+              placeholder="Choose an area, e.g. Indiranagar, Bangalore"
+              maxLength={100}
+              autoComplete="off"
+              enterKeyHint="search"
+              role="combobox"
+              aria-expanded={showSuggestions && suggestions.length > 0}
+              aria-autocomplete="list"
+              aria-controls="location-suggestions"
+              className="w-full rounded-card border border-border bg-surface px-4 py-3 text-lg outline-none focus:border-primary"
+            />
+            {showSuggestions && suggestions.length > 0 && (
+              <ul
+                id="location-suggestions"
+                role="listbox"
+                className="absolute z-10 mt-2 w-full overflow-hidden rounded-card border border-border bg-surface shadow-lg"
+              >
+                {suggestions.map((s) => (
+                  <li key={s.placeId} role="option" aria-selected={false}>
+                    <button
+                      type="button"
+                      // Fires before the input's onBlur, so the pick
+                      // registers instead of the dropdown closing first.
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handlePickSuggestion(s)}
+                      className="block w-full px-4 py-3 text-left text-sm transition-colors hover:bg-surface-raised"
+                    >
+                      {s.text}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {resolvingPlaceId && (
+            <p className="text-xs text-foreground-muted">Getting that location…</p>
+          )}
+          {suggestError && <p className="text-sm text-red-500">{suggestError}</p>}
         </section>
       )}
 
