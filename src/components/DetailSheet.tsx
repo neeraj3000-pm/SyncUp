@@ -144,7 +144,7 @@ function MovieDetailContent({ externalId }: { externalId: string }) {
           />
         ) : null}
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-bold leading-tight">{detail.title}</h2>
+          <h2 className="text-xl font-bold leading-tight tracking-tight">{detail.title}</h2>
           <p className="text-sm text-foreground-muted">
             {[
               detail.year,
@@ -252,7 +252,7 @@ function RestaurantDetailContent({ externalId }: { externalId: string }) {
       )}
 
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-bold leading-tight">{detail.title}</h2>
+        <h2 className="text-xl font-bold leading-tight tracking-tight">{detail.title}</h2>
         <p className="text-sm text-foreground-muted">
           {[detail.cuisine, detail.address].filter(Boolean).join(" · ")}
         </p>

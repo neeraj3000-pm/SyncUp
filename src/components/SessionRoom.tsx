@@ -219,7 +219,7 @@ export function SessionRoom({
   if (session.status === "EXPIRED" || session.status === "CANCELLED") {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
-        <h1 className="text-2xl font-bold">This SyncUp has ended.</h1>
+        <h1 className="text-2xl font-bold leading-tight tracking-tight">This SyncUp has ended.</h1>
         <Link
           href="/create"
           className="rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
@@ -301,7 +301,7 @@ export function SessionRoom({
   return (
     <div className="flex w-full flex-col items-center gap-8 text-center">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">Your SyncUp</h1>
+        <h1 className="text-2xl font-bold leading-tight tracking-tight">Your SyncUp</h1>
         <p className="text-foreground-muted">
           Deciding {CATEGORY_LABEL[session.category] ?? session.category}
         </p>
