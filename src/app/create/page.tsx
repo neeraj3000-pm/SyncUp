@@ -174,6 +174,7 @@ function CreateForm() {
 
   return (
     <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col gap-10 overflow-y-auto overscroll-contain px-6 py-12">
+      <h1 className="sr-only">Create a SyncUp</h1>
       <section className="flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-foreground-muted">
           What are you deciding?
@@ -184,6 +185,7 @@ function CreateForm() {
               key={c.value}
               type="button"
               onClick={() => setCategory(c.value)}
+              aria-pressed={category === c.value}
               className={`flex flex-col items-start gap-1 rounded-card border p-4 text-left transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                 category === c.value
                   ? "border-primary bg-surface-raised"
@@ -200,7 +202,7 @@ function CreateForm() {
 
       {category === "EAT" && (
         <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-semibold text-foreground-muted">
+          <h2 id="location-heading" className="text-sm font-semibold text-foreground-muted">
             Where do you want to eat?
           </h2>
           <button
@@ -248,6 +250,7 @@ function CreateForm() {
               autoComplete="off"
               enterKeyHint="search"
               role="combobox"
+              aria-labelledby="location-heading"
               aria-expanded={showSuggestions && suggestions.length > 0}
               aria-autocomplete="list"
               aria-controls="location-suggestions"
@@ -293,6 +296,7 @@ function CreateForm() {
               key={d.value}
               type="button"
               onClick={() => setDuration(d.value)}
+              aria-pressed={duration === d.value}
               className={`flex items-center justify-between rounded-card border px-4 py-3 text-left transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                 duration === d.value
                   ? "border-primary bg-surface-raised"
@@ -307,7 +311,7 @@ function CreateForm() {
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground-muted">
+        <h2 id="name-heading" className="text-sm font-semibold text-foreground-muted">
           What&apos;s your name?
         </h2>
         <input
@@ -317,6 +321,7 @@ function CreateForm() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Neeraj"
+          aria-labelledby="name-heading"
           className="rounded-card border border-border bg-surface px-4 py-3 text-lg outline-none focus:border-primary"
         />
         <p className="text-xs text-foreground-muted">

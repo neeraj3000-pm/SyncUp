@@ -15,7 +15,7 @@ import type { RestaurantDetail } from "@/services/restaurants";
 // item someone tapped, not the whole candidate pool.
 export function DetailSheet({ item, onClose }: { item: ItemRow; onClose: () => void }) {
   return (
-    <Sheet onClose={onClose}>
+    <Sheet onClose={onClose} title={item.title}>
       {item.category === "WATCH" ? (
         <MovieDetailContent externalId={item.external_id} />
       ) : (
@@ -152,12 +152,12 @@ function RestaurantDetailContent({ externalId }: { externalId: string }) {
     <div className="flex flex-col gap-4">
       {detail.photos.length > 0 && (
         <div className="flex gap-2 overflow-x-auto">
-          {detail.photos.map((url) => (
+          {detail.photos.map((url, i) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={url}
               src={url}
-              alt={detail.title}
+              alt={`${detail.title} photo ${i + 1}`}
               className="h-32 w-44 flex-shrink-0 rounded-md object-cover"
             />
           ))}

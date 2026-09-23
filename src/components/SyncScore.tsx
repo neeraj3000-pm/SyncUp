@@ -8,7 +8,7 @@ export function SyncScore({ score }: { score: number }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-pill px-3 py-1 text-sm font-bold ${
-        isPerfect ? "bg-sync text-white" : "bg-surface-raised text-foreground"
+        isPerfect ? "bg-sync text-sync-foreground" : "bg-surface-raised text-foreground"
       }`}
     >
       {isPerfect && "✓ "}

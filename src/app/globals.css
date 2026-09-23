@@ -27,6 +27,11 @@
   --color-primary-hover: #ff7a52;
   --color-secondary: #5c6979;
   --color-sync: #17c964;
+  /* Fixed (not overridden per-theme) — both light and dark mode's green are
+     light enough that white text fails contrast (~1.8-2.2:1). Ink-navy
+     clears 6:1+ against both, so this stays constant across themes rather
+     than flipping with --foreground. */
+  --color-sync-foreground: #2b2d42;
 
   --radius-card: 20px;
   --radius-pill: 999px;
@@ -37,7 +42,10 @@
   --surface: #363853;
   --surface-raised: #40426a;
   --foreground: #f6f1e9;
-  --foreground-muted: #8d99ae;
+  /* The true brand gray-blue (#8d99ae) only clears ~3.95:1 against
+     --surface here — under the 4.5:1 body-text floor. Lightened slightly,
+     same hue, to clear 4.5:1+ against both --background and --surface. */
+  --foreground-muted: #9fabc4;
   --border: #454870;
 
   --color-primary: #ff5a3e;
@@ -52,7 +60,7 @@
     --surface: #363853;
     --surface-raised: #40426a;
     --foreground: #f6f1e9;
-    --foreground-muted: #8d99ae;
+    --foreground-muted: #9fabc4;
     --border: #454870;
 
     --color-primary: #ff5a3e;
@@ -73,6 +81,7 @@
   --color-primary-hover: var(--color-primary-hover);
   --color-secondary: var(--color-secondary);
   --color-sync: var(--color-sync);
+  --color-sync-foreground: var(--color-sync-foreground);
   --radius-card: var(--radius-card);
   --radius-pill: var(--radius-pill);
   --font-sans: var(--font-manrope);
