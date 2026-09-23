@@ -1,23 +1,31 @@
 @import "tailwindcss";
 
 /*
-  SyncUp design tokens (PRD sections 49-53).
-  Light = warm off-white + dark charcoal text.
-  Dark  = deep midnight, never pure black.
-  Primary = Coral/Orange (CTAs, Sync actions). Secondary = Electric Purple (sparingly).
-  Sync = Branded Green, reserved for agreement states only.
+  SyncUp design tokens — "Modern Editorial" palette (PRD sections 49-53,
+  Visual North Star section 65: "Bold & Energetic, with Premium Execution").
+  Light = warm cream + deep ink-navy text. Dark = the same ink-navy as the
+  background instead, with cream flipping to become the text color — the
+  same five values doing double duty, not a separate dark-mode palette.
+  Primary = Coral/Red (CTAs, Sync actions, the reveal gradient).
+  Secondary = cool gray-blue (Super Sync, muted captions).
+  Sync = Branded Green, reserved for agreement states only — not part of
+  this palette, PRD-protected regardless of which brand colors are live.
 */
 :root {
-  --background: #fdf7f2;
+  --background: #f6f1e9;
   --surface: #ffffff;
-  --surface-raised: #fff3ea;
-  --foreground: #241f1b;
-  --foreground-muted: #6b6259;
-  --border: #ece2d8;
+  --surface-raised: #fbeae6;
+  --foreground: #2b2d42;
+  /* #8d99ae (the brand gray-blue) only clears ~2.6:1 against this cream
+     background — well under the 4.5:1 body-text floor. Darkened for real
+     legibility; dark mode below uses the true brand value since it clears
+     4.7:1 there. */
+  --foreground-muted: #5c6979;
+  --border: #ece6e0;
 
-  --color-primary: #ff5a36;
-  --color-primary-hover: #e6491f;
-  --color-secondary: #7c4dff;
+  --color-primary: #ff4a57;
+  --color-primary-hover: #ff7a6e;
+  --color-secondary: #5c6979;
   --color-sync: #17c964;
 
   --radius-card: 20px;
@@ -25,31 +33,31 @@
 }
 
 :root[data-theme="dark"] {
-  --background: #15131c;
-  --surface: #1e1b26;
-  --surface-raised: #262231;
-  --foreground: #f5f1ee;
-  --foreground-muted: #a39cae;
-  --border: #322c3d;
+  --background: #2b2d42;
+  --surface: #363853;
+  --surface-raised: #40426a;
+  --foreground: #f6f1e9;
+  --foreground-muted: #8d99ae;
+  --border: #454870;
 
-  --color-primary: #ff6b47;
-  --color-primary-hover: #ff8562;
-  --color-secondary: #9a73ff;
+  --color-primary: #ff4a57;
+  --color-primary-hover: #ff7a6e;
+  --color-secondary: #8d99ae;
   --color-sync: #23e07a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: #15131c;
-    --surface: #1e1b26;
-    --surface-raised: #262231;
-    --foreground: #f5f1ee;
-    --foreground-muted: #a39cae;
-    --border: #322c3d;
+    --background: #2b2d42;
+    --surface: #363853;
+    --surface-raised: #40426a;
+    --foreground: #f6f1e9;
+    --foreground-muted: #8d99ae;
+    --border: #454870;
 
-    --color-primary: #ff6b47;
-    --color-primary-hover: #ff8562;
-    --color-secondary: #9a73ff;
+    --color-primary: #ff4a57;
+    --color-primary-hover: #ff7a6e;
+    --color-secondary: #8d99ae;
     --color-sync: #23e07a;
   }
 }

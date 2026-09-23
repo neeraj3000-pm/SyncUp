@@ -32,8 +32,8 @@ export const viewport: Viewport = {
   // color there looks like a mismatched, unfinished web page rather than
   // an installed app.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fdf7f2" },
-    { media: "(prefers-color-scheme: dark)", color: "#15131c" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f1e9" },
+    { media: "(prefers-color-scheme: dark)", color: "#2b2d42" },
   ],
 };
 

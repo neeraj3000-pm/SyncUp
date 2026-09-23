@@ -4,7 +4,7 @@
   "description": "Stop debating. SyncUp.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#15131c",
-  "theme_color": "#ff5a36",
+  "background_color": "#2b2d42",
+  "theme_color": "#ff4a57",
   "icons": []
 }

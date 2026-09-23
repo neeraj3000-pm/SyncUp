@@ -12,13 +12,23 @@ export function ResultCard({ match, onTap }: { match: MatchRow; onTap: () => voi
   };
   const subtitle =
     match.item.category === "WATCH" ? meta.year : [meta.cuisine, meta.address].filter(Boolean).join(" · ");
+  // PRD section 32/33: a perfect match gets a standout treatment — reserved
+  // for 100% so it stays a genuine "everyone agreed" signal, not decoration
+  // repeated on every card in the list.
+  const isPerfect = Math.round(match.sync_score) === 100;
 
   return (
     <button
       type="button"
       onClick={onTap}
-      className="flex w-full items-center gap-4 rounded-card border border-border bg-surface p-3 text-left transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.98]"
+      className="relative flex w-full items-center gap-4 overflow-hidden rounded-card border border-border bg-surface p-3 text-left transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.98]"
     >
+      {isPerfect && (
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary to-primary-hover"
+        />
+      )}
       {match.item.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

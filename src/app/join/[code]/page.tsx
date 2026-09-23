@@ -51,7 +51,7 @@ function ErrorCard({ title, body }: { title: string; body: string }) {
   return (
     <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-center gap-6 overflow-y-auto overscroll-contain px-6 py-12 text-center">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">{title}</h1>
+        <h1 className="text-2xl font-bold leading-tight tracking-tight">{title}</h1>
         <p className="text-foreground-muted">{body}</p>
       </div>
       <Link

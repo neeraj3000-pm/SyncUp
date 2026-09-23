@@ -45,7 +45,7 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
     // parent <main>, so the existing flex-col/gap-8 spacing is untouched.
     <motion.div variants={container} initial="hidden" animate="show" className="contents">
       <motion.div variants={item} className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-bold">
+        <h1 className="text-2xl font-bold leading-tight tracking-tight">
           {matches.length === 0
             ? "No matches this time 😅"
             : perfect.length > 0

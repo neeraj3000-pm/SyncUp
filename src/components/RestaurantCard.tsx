@@ -37,7 +37,7 @@ export function RestaurantCard({ item }: { item: ItemRow }) {
         )}
       </div>
       <div className="flex flex-col gap-1 p-4">
-        <h3 className="text-xl font-bold leading-tight">{item.title}</h3>
+        <h3 className="text-xl font-bold leading-tight tracking-tight">{item.title}</h3>
         <p className="text-sm text-foreground-muted">
           {[meta.cuisine, meta.address].filter(Boolean).join(" · ")}
         </p>
