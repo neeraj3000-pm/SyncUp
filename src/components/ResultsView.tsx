@@ -44,37 +44,43 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
     // wrapper — its children still lay out as direct flex items of the
     // parent <main>, so the existing flex-col/gap-8 spacing is untouched.
     <motion.div variants={container} initial="hidden" animate="show" className="contents">
-      <motion.div variants={item} className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-bold leading-tight tracking-tight">
-          {matches.length === 0
-            ? "No matches this time 😅"
-            : perfect.length > 0
-              ? "YOU'RE SYNCED ✓"
-              : "No perfect Sync 😅"}
-        </h1>
-        <p className="text-foreground-muted">
-          {matches.length === 0
-            ? "Nobody agreed on anything this round — try a Re-Sync."
-            : perfect.length > 0
-              ? "Everyone agreed!"
-              : "But you found some common ground."}
-        </p>
-      </motion.div>
-
       {/* No unanimous winner — Re-Sync is the actual next step here, not a
           courtesy at the end of a list someone has to scroll past first
           (which could be every non-100% item the group touched, in a
-          group session). Only the success path (a perfect match exists)
-          keeps it at the bottom, below, where it reads as "start another
-          round" after reviewing the win rather than the primary action. */}
-      {perfect.length === 0 && (
-        <motion.div variants={item}>
+          group session), so it sits right next to the result instead of
+          below it: a larger pill (~2/3 width) for the message, a smaller
+          one for the action. minmax(0, …) tracks, not bare fr units — a
+          track can't be forced wider than its share by text that refuses
+          to shrink, which is what let a long sentence squeeze "Re-Sync"
+          onto two lines during design review. Only the success path (a
+          perfect match exists) keeps the old centered heading, with
+          Re-Sync at the bottom below the win — see there. */}
+      {perfect.length === 0 ? (
+        <motion.div
+          variants={item}
+          className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-stretch gap-3"
+        >
+          <div className="flex min-w-0 flex-col justify-center gap-1 rounded-pill bg-surface-raised px-6 py-4">
+            <h1 className="text-base font-bold leading-tight tracking-tight">
+              {matches.length === 0 ? "No matches this time 😅" : "No perfect Sync 😅"}
+            </h1>
+            <p className="text-[12.5px] font-medium leading-snug text-foreground-muted">
+              {matches.length === 0
+                ? "Nobody agreed on anything this round."
+                : "But you found some common ground."}
+            </p>
+          </div>
           <Link
             href={`/create?category=${session.category}`}
-            className="w-full rounded-pill bg-primary px-8 py-4 text-center text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
+            className="flex items-center justify-center whitespace-nowrap rounded-pill bg-primary px-2 text-[15px] font-bold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
           >
             Re-Sync
           </Link>
+        </motion.div>
+      ) : (
+        <motion.div variants={item} className="flex flex-col items-center gap-2 text-center">
+          <h1 className="text-2xl font-bold leading-tight tracking-tight">YOU&apos;RE SYNCED ✓</h1>
+          <p className="text-foreground-muted">Everyone agreed!</p>
         </motion.div>
       )}
 
