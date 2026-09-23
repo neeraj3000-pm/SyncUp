@@ -61,6 +61,23 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
         </p>
       </motion.div>
 
+      {/* No unanimous winner — Re-Sync is the actual next step here, not a
+          courtesy at the end of a list someone has to scroll past first
+          (which could be every non-100% item the group touched, in a
+          group session). Only the success path (a perfect match exists)
+          keeps it at the bottom, below, where it reads as "start another
+          round" after reviewing the win rather than the primary action. */}
+      {perfect.length === 0 && (
+        <motion.div variants={item}>
+          <Link
+            href={`/create?category=${session.category}`}
+            className="w-full rounded-pill bg-primary px-8 py-4 text-center text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
+          >
+            Re-Sync
+          </Link>
+        </motion.div>
+      )}
+
       {perfect.length > 0 && (
         <div className="flex flex-col gap-3">
           {perfect.map((m) => (
@@ -87,15 +104,19 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
       )}
 
       {/* PRD section 36: MVP Re-Sync simply creates another session — this
-          just pre-fills the category so it's one less tap. */}
-      <motion.div variants={item}>
-        <Link
-          href={`/create?category=${session.category}`}
-          className="w-full rounded-pill border border-border px-8 py-4 text-center text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
-        >
-          Re-Sync
-        </Link>
-      </motion.div>
+          just pre-fills the category so it's one less tap. Only rendered
+          here (bottom) when there's already a win to show above it; the
+          no-perfect-match version lives at the top instead, see above. */}
+      {perfect.length > 0 && (
+        <motion.div variants={item}>
+          <Link
+            href={`/create?category=${session.category}`}
+            className="w-full rounded-pill border border-border px-8 py-4 text-center text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+          >
+            Re-Sync
+          </Link>
+        </motion.div>
+      )}
 
       {selected && <DetailSheet item={selected} onClose={() => setSelected(null)} />}
     </motion.div>
