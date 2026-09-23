@@ -48,19 +48,24 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
           courtesy at the end of a list someone has to scroll past first
           (which could be every non-100% item the group touched, in a
           group session), so it sits right next to the result instead of
-          below it: a larger pill (~2/3 width) for the message, a smaller
-          one for the action. minmax(0, …) tracks, not bare fr units — a
-          track can't be forced wider than its share by text that refuses
-          to shrink, which is what let a long sentence squeeze "Re-Sync"
-          onto two lines during design review. Only the success path (a
-          perfect match exists) keeps the old centered heading, with
-          Re-Sync at the bottom below the win — see there. */}
+          below it: a message card (~2/3 width) plus a Re-Sync pill next to
+          it. minmax(0, …) tracks, not bare fr units — a track can't be
+          forced wider than its share by text that refuses to shrink,
+          which is what let a long sentence squeeze "Re-Sync" onto two
+          lines during design review. The message uses card corners
+          (rounded-card, same as ResultCard below), not rounded-pill —
+          pill shape is this app's dedicated "tappable" signal, so giving
+          it to a non-interactive box made it read as a second, dead-
+          looking button; Re-Sync is the only true pill on the row.
+          Only the success path (a perfect match exists) keeps the old
+          centered heading, with Re-Sync at the bottom below the win —
+          see there. */}
       {perfect.length === 0 ? (
         <motion.div
           variants={item}
           className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-stretch gap-3"
         >
-          <div className="flex min-w-0 flex-col justify-center gap-1 rounded-pill bg-surface-raised px-6 py-4">
+          <div className="flex min-w-0 flex-col justify-center gap-1 rounded-card bg-surface-raised px-6 py-4">
             <h1 className="text-base font-bold leading-tight tracking-tight">
               {matches.length === 0 ? "No matches this time 😅" : "No perfect Sync 😅"}
             </h1>
