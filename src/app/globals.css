@@ -121,6 +121,24 @@ body {
      ambiguous page-scroll-vs-card-swipe conflict flagged in Sprint 5
      testing. */
   overscroll-behavior: none;
+  /* overflow: hidden alone isn't enough on iOS Safari specifically: it
+     still leaves the document a (barely) scrollable box, so a horizontal
+     drag — the swipe deck's card, dragged via a transform that briefly
+     extends past the viewport edge — registers as real page scroll and
+     paints a native scrollbar for it. Android Chrome doesn't have this
+     quirk, which is why it only showed up on iPhone. position: fixed
+     removes the scrollable box entirely instead of just clipping its
+     overflow, closing the gap on both axes and both platforms. Only top/
+     left/width are set here — height stays owned by layout.tsx's h-dvh
+     class (setting bottom too, alongside an explicit height, would
+     over-constrain the box). Fixed-position descendants (ThemeToggle,
+     Sheet's backdrop) are unaffected — only transform/filter/perspective/
+     contain on an ancestor traps them, not position: fixed. */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 input,
