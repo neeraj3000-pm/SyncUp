@@ -117,7 +117,7 @@ export function InstallPrompt() {
           {status.ios === "safari"
             ? 'Tap the Share icon, then "Add to Home Screen."'
             : status.ios === "other"
-              ? "Open this link in Safari to add it — that's the one browser on iPhone/iPad that can."
+              ? "Open this link in Safari to add it to your home screen."
               : "One tap next time — no browser tab needed."}
         </p>
       </div>
