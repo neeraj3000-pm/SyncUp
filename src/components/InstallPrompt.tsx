@@ -11,9 +11,20 @@ const STORAGE_KEY = "syncup-install-prompt-seen";
 // so telling it apart from a browser that might still fire that event
 // genuinely requires checking the UA. Even web.dev's own PWA-install guide
 // does this for the same reason.
-function isIOSSafari() {
-  if (typeof navigator === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+//
+// Matching just "is this an iPhone/iPad" isn't enough, though — Apple
+// requires every iOS browser to run on its engine, but each still ships
+// its own thin UI on top, and only Safari's own Share sheet has a real,
+// manifest-aware "Add to Home Screen." Chrome/Firefox/Edge/Opera on iOS
+// each carry their own UA token specifically so this can be told apart;
+// without ruling them out, Chrome-on-iPad got sent through the same
+// "tap Share, then Add to Home Screen" instructions as real Safari, for
+// a Share sheet that doesn't have that option.
+function iosBrowserKind(): "safari" | "other" | null {
+  if (typeof navigator === "undefined") return null;
+  const ua = navigator.userAgent;
+  if (!/iPad|iPhone|iPod/.test(ua)) return null;
+  return /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? "other" : "safari";
 }
 
 function isStandalone() {
@@ -45,10 +56,13 @@ export function InstallPrompt() {
   // Starts hidden and only reveals itself once the mount effect below
   // confirms it's actually eligible — avoids a flash of the banner before
   // the localStorage/standalone checks (both synchronous, but still after
-  // first paint) have run. One combined object, not two separate
-  // booleans, so the eligibility check below is a single setState call
-  // rather than two cascading ones.
-  const [status, setStatus] = useState({ eligible: false, ios: false });
+  // first paint) have run. One combined object, not several separate
+  // fields, so the eligibility check below is a single setState call
+  // rather than several cascading ones.
+  const [status, setStatus] = useState<{
+    eligible: boolean;
+    ios: "safari" | "other" | null;
+  }>({ eligible: false, ios: null });
 
   useEffect(() => {
     if (isStandalone()) return;
@@ -60,7 +74,7 @@ export function InstallPrompt() {
     // useState initializer without crashing server-side — same pattern
     // ThemeToggle uses for the same reason.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStatus({ eligible: true, ios: isIOSSafari() });
+    setStatus({ eligible: true, ios: iosBrowserKind() });
 
     function handleBeforeInstallPrompt(e: Event) {
       // Stops Chrome's own mini-infobar from appearing behind this —
@@ -73,7 +87,7 @@ export function InstallPrompt() {
   }, []);
 
   function dismiss() {
-    setStatus({ eligible: false, ios: false });
+    setStatus({ eligible: false, ios: null });
     window.localStorage.setItem(STORAGE_KEY, "1");
   }
 
@@ -100,9 +114,11 @@ export function InstallPrompt() {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold leading-tight">Add SyncUp to your home screen</p>
         <p className="text-xs text-foreground-muted">
-          {status.ios
+          {status.ios === "safari"
             ? 'Tap the Share icon, then "Add to Home Screen."'
-            : "One tap next time — no browser tab needed."}
+            : status.ios === "other"
+              ? "Open this link in Safari to add it — that's the one browser on iPhone/iPad that can."
+              : "One tap next time — no browser tab needed."}
         </p>
       </div>
       {!status.ios && (
