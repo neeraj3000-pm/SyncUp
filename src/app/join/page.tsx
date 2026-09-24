@@ -34,7 +34,7 @@ export default function JoinLandingPage() {
           autoCorrect="off"
           spellCheck={false}
           enterKeyHint="go"
-          className="rounded-card border border-border bg-surface px-4 py-4 text-center font-mono text-3xl font-bold tracking-[0.2em] outline-none focus:border-primary"
+          className="rounded-card border border-border bg-surface px-4 py-4 text-center font-mono text-3xl font-bold tracking-[0.2em] shadow-card outline-none focus:border-primary"
         />
         <button
           type="submit"

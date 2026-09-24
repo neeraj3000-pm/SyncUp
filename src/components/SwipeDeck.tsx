@@ -183,7 +183,7 @@ export function SwipeDeck({
               <button
                 type="button"
                 onClick={() => setRevealPromptDismissed(true)}
-                className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+                className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
               >
                 Not Yet
               </button>
@@ -225,7 +225,7 @@ export function SwipeDeck({
             type="button"
             onClick={handleShowMore}
             disabled={loadingMore}
-            className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97] disabled:opacity-50"
+            className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97] disabled:opacity-50"
           >
             {loadingMore ? "Loading…" : "Show Me 50 More"}
           </button>

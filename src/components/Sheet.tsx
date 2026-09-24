@@ -125,14 +125,14 @@ export function Sheet({
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className="max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-card bg-surface p-6 sm:rounded-card"
+            className="max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-card bg-surface p-6 shadow-2xl sm:rounded-card"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setVisible(false)}
               aria-label="Close"
-              className="mb-4 ml-auto flex h-11 w-11 items-center justify-center rounded-pill border border-border text-lg transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+              className="mb-4 ml-auto flex h-11 w-11 items-center justify-center rounded-pill border border-border text-lg shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
             >
               ✕
             </button>

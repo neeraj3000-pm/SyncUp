@@ -108,7 +108,7 @@ export function InstallPrompt() {
   if (!status.eligible || (!status.ios && !deferredPrompt)) return null;
 
   return (
-    <div className="flex w-full items-center gap-3 rounded-card border border-border bg-surface-raised px-4 py-3">
+    <div className="flex w-full items-center gap-3 rounded-card border border-border bg-surface-raised px-4 py-3 shadow-card">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/icon-192.png" alt="" className="h-10 w-10 flex-shrink-0 rounded-lg" />
       <div className="min-w-0 flex-1">

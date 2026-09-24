@@ -16,7 +16,7 @@ export function ParticipantList({
       {participants.map((p) => (
         <li
           key={p.id}
-          className="flex items-center justify-between rounded-card border border-border bg-surface px-4 py-3"
+          className="flex items-center justify-between rounded-card border border-border bg-surface px-4 py-3 shadow-card"
         >
           <span className="font-medium">
             {p.display_name}

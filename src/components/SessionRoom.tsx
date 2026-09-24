@@ -338,7 +338,7 @@ export function SessionRoom({
         </p>
       </div>
 
-      <div className="rounded-card border border-border bg-surface px-10 py-6">
+      <div className="rounded-card border border-border bg-surface px-10 py-6 shadow-card">
         <p className="text-sm text-foreground-muted">Share this code</p>
         <p className="font-mono text-4xl font-bold tracking-[0.2em] text-primary">
           {session.code}
@@ -350,7 +350,7 @@ export function SessionRoom({
         <button
           type="button"
           onClick={() => setShowQR(true)}
-          className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+          className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
         >
           Show QR Code
         </button>

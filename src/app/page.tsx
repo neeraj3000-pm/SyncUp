@@ -47,7 +47,7 @@ export default function LandingPage() {
           <p className="text-sm text-foreground-muted">Already have a code?</p>
           <Link
             href="/join"
-            className="rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+            className="rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
           >
             Join a SyncUp
           </Link>
