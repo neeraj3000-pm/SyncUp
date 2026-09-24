@@ -8,6 +8,7 @@ import type { MatchRow } from "@/services/matching";
 import type { ItemRow } from "@/services/candidates";
 import { ResultCard } from "@/components/ResultCard";
 import { DetailSheet } from "@/components/DetailSheet";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 // The reveal is the one moment the whole app builds toward (PRD section
 // 32/33) — worth a cascade instead of the whole list appearing at once
@@ -128,6 +129,14 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
           </Link>
         </motion.div>
       )}
+
+      {/* Mounted only here, not app-wide — "after finishing a first
+          SyncUp" is the meaningful moment this gets offered at, not on
+          first landing. Renders nothing itself until it's actually
+          eligible (see InstallPrompt). */}
+      <motion.div variants={item}>
+        <InstallPrompt />
+      </motion.div>
 
       {selected && <DetailSheet item={selected} onClose={() => setSelected(null)} />}
     </motion.div>

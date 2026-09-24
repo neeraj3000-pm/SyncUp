@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -13,6 +14,23 @@ export const metadata: Metadata = {
   description:
     "Swipe with the people you're with. SyncUp finds what everyone actually wants to watch or eat.",
   manifest: "/manifest.json",
+  // src/app/icon.png covers the regular favicon via Next's own file
+  // convention — only the iOS home-screen icon needs declaring by hand
+  // here, since it lives in public/ under a name iOS specifically expects.
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    // "black-translucent" draws the status bar as a transparent overlay
+    // instead of a solid reserved bar — matching how this app already
+    // paints under the notch everywhere else (viewportFit: "cover" +
+    // env(safe-area-inset-*) padding below). The solid "default"/"black"
+    // options would instead show a plain white or black strip that
+    // clashes with the app's own cream/navy background.
+    statusBarStyle: "black-translucent",
+    title: "SyncUp",
+  },
 };
 
 export const viewport: Viewport = {
@@ -69,6 +87,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
         {children}
         <ThemeToggle />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
