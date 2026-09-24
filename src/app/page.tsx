@@ -16,6 +16,13 @@ export default function LandingPage() {
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-[6vh] h-72 w-72 -translate-x-1/2 rounded-full bg-primary/25 blur-[70px]"
       />
+      {/* A second, lower glow so the atmosphere carries down to the hero
+          illustration below instead of the page having color only at the
+          very top and nothing everywhere else. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[56vh] h-[340px] w-[340px] -translate-x-1/2 rounded-full bg-primary/[0.16] blur-[90px]"
+      />
 
       <div className="relative flex flex-col gap-4">
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
@@ -47,7 +54,27 @@ export default function LandingPage() {
         </div>
       </div>
 
-      <p className="relative mt-auto pt-10 text-sm text-foreground-muted">No login required.</p>
+      {/* The fanned three-card mark from the app icon, scaled up — brings
+          that identity into the app itself instead of leaving it only on
+          the home screen, and fills what used to be dead space between
+          the buttons and the footer on a tall phone screen. Purely
+          visual, no new copy, so the "headline + two buttons" rule above
+          still holds. Fixed hex values, not theme tokens: this mirrors
+          the actual icon file, which is a single static asset that never
+          changes color between light and dark — --foreground/--secondary
+          would flip on it in a way the real icon never does. */}
+      <div
+        aria-hidden
+        className="relative flex min-h-[120px] flex-1 items-center justify-center"
+      >
+        <div className="flex items-center">
+          <div className="-mr-4 h-[98px] w-[76px] rotate-[-16deg] rounded-2xl bg-[#2b2d42] shadow-[0_12px_24px_-8px_rgba(43,45,66,0.25)]" />
+          <div className="z-10 h-[98px] w-[76px] rounded-2xl bg-primary shadow-[0_16px_32px_-8px_rgba(255,90,62,0.35)]" />
+          <div className="-ml-4 h-[98px] w-[76px] rotate-[16deg] rounded-2xl bg-[#8d99ae] shadow-[0_12px_24px_-8px_rgba(43,45,66,0.2)]" />
+        </div>
+      </div>
+
+      <p className="relative text-sm text-foreground-muted">No login required.</p>
     </main>
   );
 }
