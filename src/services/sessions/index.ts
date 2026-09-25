@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { generateSessionCode } from "@/lib/session-code";
+// Type-only — erased at compile time, so this never pulls services/movies'
+// "server-only" runtime module into a client bundle (DetailSheet.tsx
+// already relies on the same thing for MovieDetail).
+import type { MovieFilter } from "@/services/movies";
 
 export type SessionCategory = "WATCH" | "EAT";
 export type SessionMode = "COUPLE" | "GROUP";
@@ -29,6 +33,8 @@ export interface SessionRow {
   location_lat: number | null;
   location_lng: number | null;
   location_label: string | null;
+  // WATCH only (PRD section 11-12) — null means "All Movies," no filter.
+  movie_filter: MovieFilter | null;
 }
 
 export interface ParticipantRow {
@@ -62,6 +68,8 @@ interface CreateSessionInput {
   locationLat?: number | null;
   locationLng?: number | null;
   locationLabel?: string | null;
+  // WATCH only — see SessionRow's movie_filter field.
+  movieFilter?: MovieFilter | null;
 }
 
 export async function createSession({
@@ -72,6 +80,7 @@ export async function createSession({
   locationLat = null,
   locationLng = null,
   locationLabel = null,
+  movieFilter = null,
 }: CreateSessionInput): Promise<{
   session: SessionRow;
   participant: ParticipantRow;
@@ -98,6 +107,7 @@ export async function createSession({
         location_lat: locationLat,
         location_lng: locationLng,
         location_label: locationLabel,
+        movie_filter: movieFilter,
       })
       .select()
       .single();

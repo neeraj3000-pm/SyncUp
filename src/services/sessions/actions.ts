@@ -10,6 +10,12 @@ import {
   type SessionCategory,
   type SessionRow,
 } from "@/services/sessions";
+import {
+  MOVIE_DISCOVER_SLUGS,
+  MOVIE_GENRE_SLUGS,
+  MOVIE_LANGUAGE_SLUGS,
+  type MovieFilter,
+} from "@/services/movies";
 
 // Server Functions are reachable by direct POST request, not just from our
 // own UI (see Next.js docs on Server Actions), so every input is validated
@@ -51,6 +57,27 @@ function normalizeName(raw: unknown): string | null {
 
 const MAX_LOCATION_LABEL_LENGTH = 100;
 
+// Server Actions are reachable by direct POST (see the file-top comment),
+// so a client-submitted filter is validated against the exact same slugs
+// services/movies knows how to query for — never trusted as already being
+// one of them just because the shape looks right.
+function normalizeMovieFilter(raw: unknown): MovieFilter | null | "invalid" {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== "object") return "invalid";
+  const { kind, value } = raw as { kind?: unknown; value?: unknown };
+  if (typeof value !== "string") return "invalid";
+  if (kind === "genre" && (MOVIE_GENRE_SLUGS as readonly string[]).includes(value)) {
+    return { kind: "genre", value } as MovieFilter;
+  }
+  if (kind === "discover" && (MOVIE_DISCOVER_SLUGS as readonly string[]).includes(value)) {
+    return { kind: "discover", value } as MovieFilter;
+  }
+  if (kind === "language" && (MOVIE_LANGUAGE_SLUGS as readonly string[]).includes(value)) {
+    return { kind: "language", value } as MovieFilter;
+  }
+  return "invalid";
+}
+
 export async function createSessionAction(input: {
   category: string;
   durationSeconds: number;
@@ -59,15 +86,18 @@ export async function createSessionAction(input: {
   locationLat?: number | null;
   locationLng?: number | null;
   locationLabel?: string | null;
+  movieFilter?: unknown;
 }): Promise<ActionResult<{ session: SessionRow; participant: ParticipantRow }>> {
   const displayName = normalizeName(input.displayName);
   const category = input.category as SessionCategory;
+  const movieFilter = normalizeMovieFilter(input.movieFilter);
   if (
     !VALID_CATEGORIES.includes(category) ||
     !VALID_DURATIONS.includes(input.durationSeconds) ||
     typeof input.creatorGuestId !== "string" ||
     input.creatorGuestId.length === 0 ||
-    !displayName
+    !displayName ||
+    movieFilter === "invalid"
   ) {
     return { ok: false, error: "Invalid session configuration." };
   }
@@ -99,6 +129,7 @@ export async function createSessionAction(input: {
       locationLng: category === "EAT" && hasCoords ? input.locationLng : null,
       locationLabel:
         category === "EAT" && !hasCoords && locationLabel.length > 0 ? locationLabel : null,
+      movieFilter: category === "WATCH" ? movieFilter : null,
     });
     return { ok: true, data };
   } catch (error) {

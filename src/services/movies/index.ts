@@ -27,6 +27,81 @@ interface TmdbGenre {
   name: string;
 }
 
+// PRD section 11-12's "Step 2 — choose movie pool." A session has at most
+// one of these active (see MovieFilterPicker) — never combined, so a
+// simple tagged union rather than a set of independent toggles. The slugs
+// here are what the UI and the sessions table both deal in; only this
+// file ever translates a slug into a TMDB-specific id/param, per
+// CLAUDE.md's "provider-specific logic stays behind /services/*" rule.
+export type MovieGenreSlug =
+  | "action"
+  | "comedy"
+  | "drama"
+  | "horror"
+  | "sci-fi"
+  | "thriller"
+  | "romance"
+  | "animation";
+export type MovieDiscoverSlug = "now_playing_india" | "popular" | "top_rated";
+export type MovieLanguageSlug = "hindi" | "tamil" | "telugu" | "kannada" | "malayalam" | "marathi";
+
+export type MovieFilter =
+  | { kind: "genre"; value: MovieGenreSlug }
+  | { kind: "discover"; value: MovieDiscoverSlug }
+  | { kind: "language"; value: MovieLanguageSlug };
+
+// Exported so services/sessions/actions.ts can validate a client-submitted
+// filter against the exact same slugs this file knows how to query for,
+// without either side maintaining its own separate copy of the list.
+export const MOVIE_GENRE_SLUGS: readonly MovieGenreSlug[] = [
+  "action",
+  "comedy",
+  "drama",
+  "horror",
+  "sci-fi",
+  "thriller",
+  "romance",
+  "animation",
+];
+export const MOVIE_DISCOVER_SLUGS: readonly MovieDiscoverSlug[] = [
+  "now_playing_india",
+  "popular",
+  "top_rated",
+];
+export const MOVIE_LANGUAGE_SLUGS: readonly MovieLanguageSlug[] = [
+  "hindi",
+  "tamil",
+  "telugu",
+  "kannada",
+  "malayalam",
+  "marathi",
+];
+
+// TMDB's own genre ids (from /genre/movie/list) — fixed and stable enough
+// to hardcode for the 8 this app actually offers, rather than resolving a
+// slug through getGenreMap() (built for the opposite direction: id → name,
+// for card metadata) on every candidate-pool generation.
+const GENRE_TMDB_IDS: Record<MovieGenreSlug, number> = {
+  action: 28,
+  comedy: 35,
+  drama: 18,
+  horror: 27,
+  "sci-fi": 878,
+  thriller: 53,
+  romance: 10749,
+  animation: 16,
+};
+
+// ISO 639-1 codes, for TMDB's with_original_language discover param.
+const LANGUAGE_ISO_CODES: Record<MovieLanguageSlug, string> = {
+  hindi: "hi",
+  tamil: "ta",
+  telugu: "te",
+  kannada: "kn",
+  malayalam: "ml",
+  marathi: "mr",
+};
+
 async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): Promise<T> {
   const url = new URL(`${TMDB_BASE}${path}`);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
@@ -88,12 +163,52 @@ function normalizeMovie(raw: TmdbMovieSummary, genreMap: Map<number, string>): N
 // against whatever the session has already shown (see services/candidates).
 const PAGES_PER_BATCH = 3;
 
-export async function getMoviePool(batchNumber: number, count = 50): Promise<NormalizedItem[]> {
+// Turns a UI-picked filter into the actual TMDB request — the one place
+// that knows which endpoint/param each filter kind needs, so neither the
+// UI nor the category-agnostic candidate-pool pipeline has to.
+function buildPoolQuery(filter: MovieFilter | null): {
+  path: string;
+  params: Record<string, string>;
+} {
+  if (!filter) return { path: "/movie/popular", params: {} };
+
+  if (filter.kind === "genre") {
+    return {
+      path: "/discover/movie",
+      params: { with_genres: String(GENRE_TMDB_IDS[filter.value]), sort_by: "popularity.desc" },
+    };
+  }
+  if (filter.kind === "language") {
+    return {
+      path: "/discover/movie",
+      params: {
+        with_original_language: LANGUAGE_ISO_CODES[filter.value],
+        sort_by: "popularity.desc",
+      },
+    };
+  }
+  // filter.kind === "discover"
+  if (filter.value === "now_playing_india") {
+    // PRD's own ask: movies currently in Indian theaters, not just
+    // "recently released" — now_playing + region is TMDB's actual
+    // theatrical-release data, not an approximation via date filtering.
+    return { path: "/movie/now_playing", params: { region: "IN" } };
+  }
+  if (filter.value === "top_rated") return { path: "/movie/top_rated", params: {} };
+  return { path: "/movie/popular", params: {} }; // "popular"
+}
+
+export async function getMoviePool(
+  batchNumber: number,
+  filter: MovieFilter | null = null,
+  count = 50,
+): Promise<NormalizedItem[]> {
   const genreMap = await getGenreMap();
   const startPage = (batchNumber - 1) * PAGES_PER_BATCH + 1;
+  const { path, params } = buildPoolQuery(filter);
   const pages = await Promise.all(
     Array.from({ length: PAGES_PER_BATCH }, (_, i) =>
-      tmdbFetch<TmdbListResponse>("/movie/popular", { page: String(startPage + i) }),
+      tmdbFetch<TmdbListResponse>(path, { ...params, page: String(startPage + i) }),
     ),
   );
 

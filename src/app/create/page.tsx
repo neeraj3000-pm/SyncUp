@@ -10,6 +10,8 @@ import {
 } from "@/services/location/actions";
 import type { LocationSuggestion } from "@/services/location";
 import { EatIcon, WatchIcon } from "@/components/icons/CategoryIcons";
+import { MovieFilterPicker } from "@/components/MovieFilterPicker";
+import type { MovieFilter } from "@/services/movies";
 
 const CATEGORIES = [
   { value: "WATCH", Icon: WatchIcon, label: "Watch", helper: "Movies and more" },
@@ -40,6 +42,7 @@ function CreateForm() {
   const initialCategory = searchParams.get("category") === "EAT" ? "EAT" : "WATCH";
 
   const [category, setCategory] = useState<"WATCH" | "EAT">(initialCategory);
+  const [movieFilter, setMovieFilter] = useState<MovieFilter | null>(null);
   const [duration, setDuration] = useState(300);
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
@@ -161,6 +164,7 @@ function CreateForm() {
       locationLat: coords?.lat ?? null,
       locationLng: coords?.lng ?? null,
       locationLabel: areaText.trim() || null,
+      movieFilter: category === "WATCH" ? movieFilter : null,
     });
 
     if (!result.ok) {
@@ -206,6 +210,13 @@ function CreateForm() {
           ))}
         </div>
       </section>
+
+      {category === "WATCH" && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-sm font-semibold text-foreground-muted">What do you want to watch?</h2>
+          <MovieFilterPicker value={movieFilter} onChange={setMovieFilter} />
+        </section>
+      )}
 
       {category === "EAT" && (
         <section className="flex flex-col gap-4">

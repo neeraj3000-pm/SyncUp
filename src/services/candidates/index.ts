@@ -11,7 +11,7 @@ import { getSessionById, type SessionCategory, type SessionRow } from "@/service
 async function getCandidatesFromProvider(session: SessionRow, batchNumber: number) {
   switch (session.category) {
     case "WATCH":
-      return getMoviePool(batchNumber);
+      return getMoviePool(batchNumber, session.movie_filter);
     case "EAT":
       return getRestaurantPool(
         session.location_lat !== null && session.location_lng !== null
