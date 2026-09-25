@@ -178,8 +178,16 @@ function CreateForm() {
   }
 
   return (
-    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col gap-10 overflow-y-auto overscroll-contain px-6 py-12">
+    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col">
       <h1 className="sr-only">Create a SyncUp!</h1>
+      {/* Same "fixed shell, one scrollable region" architecture the rest
+          of the app already uses (layout.tsx's body is the outer version
+          of this) — the form fields scroll in here, but "Create SyncUp!"
+          below stays a sibling of this div, outside the scroll area, so
+          it's always on screen instead of something you might scroll
+          past and lose track of. */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 pt-12">
+      <div className="flex flex-col gap-10 pb-6">
       <section className="flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-foreground-muted">
           What are you deciding?
@@ -347,9 +355,20 @@ function CreateForm() {
           decide {category === "WATCH" ? "what to watch" : "where to eat"}&quot;.
         </p>
       </section>
+      </div>
+      </div>
 
-      <form onSubmit={handleSubmit} className="mt-auto flex flex-col gap-2">
-        {error && <p className="text-sm text-red-500">{error}</p>}
+      {/* Outside the scroll region above — a real sibling, not
+          position:sticky/fixed — so it's simply always in view, the
+          same way the whole app's bottom-anchored primary actions
+          already work everywhere content is short enough to not need
+          scrolling at all. A top border + its own background keeps it
+          visually separated from whatever's scrolled up underneath it. */}
+      <form
+        onSubmit={handleSubmit}
+        className="flex-shrink-0 border-t border-border bg-background px-6 pb-6 pt-4"
+      >
+        {error && <p className="mb-2 text-sm text-red-500">{error}</p>}
         <button
           type="submit"
           disabled={!name.trim() || pending || needsLocation}

@@ -219,7 +219,7 @@ export function SessionRoom({
 
   if (myParticipantId === null || !participants.some((p) => p.id === myParticipantId)) {
     return (
-      <div className="flex flex-col items-center gap-4 text-center">
+      <div className="flex w-full flex-1 flex-col items-center justify-center gap-4 px-6 py-6 text-center">
         <p className="text-foreground-muted">
           Looks like you haven&apos;t joined this SyncUp yet.
         </p>
@@ -242,7 +242,7 @@ export function SessionRoom({
 
   if (session.status === "EXPIRED" || session.status === "CANCELLED") {
     return (
-      <div className="flex flex-col items-center gap-4 text-center">
+      <div className="flex w-full flex-1 flex-col items-center justify-center gap-4 px-6 py-6 text-center">
         <h1 className="text-2xl font-bold leading-tight tracking-tight">This SyncUp has ended.</h1>
         <Link
           href="/create"
@@ -287,7 +287,7 @@ export function SessionRoom({
 
   if (session.status === "ACTIVE") {
     return (
-      <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
+      <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-6 px-6 py-6 text-center">
         <h1 className="sr-only">
           Deciding <CategoryLabel category={session.category} />
         </h1>
@@ -315,7 +315,7 @@ export function SessionRoom({
             type="button"
             onClick={handleEndNow}
             disabled={ending}
-            className="text-sm text-foreground-muted underline underline-offset-2 disabled:opacity-50"
+            className="w-fit rounded-pill border border-border bg-surface px-6 py-3 text-sm font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97] disabled:opacity-50"
           >
             {ending ? "Ending…" : "End SyncUp Now!"}
           </button>
@@ -324,14 +324,18 @@ export function SessionRoom({
     );
   }
 
-  // WAITING
+  // WAITING — same fixed-shell shape as create/page.tsx: everything above
+  // the Start button scrolls in its own region, the button itself (the
+  // one thing this whole screen exists for) sits in a footer that's
+  // never pushed off-screen, matching how the create screen's primary
+  // action now behaves.
   return (
-    <>
+    <div className="flex w-full min-h-0 flex-1 flex-col">
       {/* Same atmospheric glow as the join screens (join/page.tsx,
           JoinSessionView) — this was the one screen in that trio still
           reading as flat/empty. Fixed, not absolute, so it doesn't need a
           relative ancestor sized to the viewport (matches results page's
-          reasoning); the content div right below gets `relative` itself so
+          reasoning); the scrollable region below gets `relative` itself so
           it still paints above this rather than under it (a position:fixed
           sibling otherwise paints over a plain static one regardless of
           DOM order). */}
@@ -339,53 +343,57 @@ export function SessionRoom({
         aria-hidden
         className="pointer-events-none fixed left-1/2 top-[50vh] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.14] blur-[80px]"
       />
-      <div className="relative flex w-full flex-col items-center gap-4 text-center">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold leading-tight tracking-tight">Your SyncUp!</h1>
-          <p className="text-foreground-muted">
-            Deciding <CategoryLabel category={session.category} />
-          </p>
+      <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pt-12">
+        <div className="flex flex-col items-center gap-4 pb-6 text-center">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-bold leading-tight tracking-tight">Your SyncUp!</h1>
+            <p className="text-foreground-muted">
+              Deciding <CategoryLabel category={session.category} />
+            </p>
+          </div>
+
+          <div className="rounded-card border border-border bg-surface px-10 py-5 shadow-card">
+            <p className="text-sm text-foreground-muted">Share this code</p>
+            <p className="font-mono text-4xl font-bold tracking-[0.2em] text-primary">
+              {session.code}
+            </p>
+          </div>
+
+          <div className="flex w-full flex-col gap-3">
+            <CopyLinkButton path={`/join/${session.code}`} />
+            <button
+              type="button"
+              onClick={() => setShowQR(true)}
+              className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+            >
+              Show QR Code
+            </button>
+          </div>
+
+          {showQR && (
+            <QRModal
+              path={`/join/${session.code}`}
+              code={session.code}
+              onClose={() => setShowQR(false)}
+            />
+          )}
+
+          {/* Capped and internally scrollable, same pattern as
+              SwipeProgress elsewhere — a group of up to 10 (PRD's max)
+              would otherwise grow this list tall enough to dominate the
+              scroll region on its own, even with everything else on this
+              screen kept lean. */}
+          <div className="w-full max-h-48 overflow-y-auto overscroll-contain">
+            <ParticipantList
+              participants={participants}
+              myParticipantId={myParticipantId}
+              hostParticipantId={hostParticipantId}
+            />
+          </div>
         </div>
+      </div>
 
-        <div className="rounded-card border border-border bg-surface px-10 py-5 shadow-card">
-          <p className="text-sm text-foreground-muted">Share this code</p>
-          <p className="font-mono text-4xl font-bold tracking-[0.2em] text-primary">
-            {session.code}
-          </p>
-        </div>
-
-        <div className="flex w-full flex-col gap-3">
-          <CopyLinkButton path={`/join/${session.code}`} />
-          <button
-            type="button"
-            onClick={() => setShowQR(true)}
-            className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
-          >
-            Show QR Code
-          </button>
-        </div>
-
-        {showQR && (
-          <QRModal
-            path={`/join/${session.code}`}
-            code={session.code}
-            onClose={() => setShowQR(false)}
-          />
-        )}
-
-        {/* Capped and internally scrollable, same pattern as SwipeProgress
-            elsewhere — a group of up to 10 (PRD's max) would otherwise grow
-            this list tall enough to push the Start button below the fold
-            on its own, even with everything else on this screen kept
-            lean. */}
-        <div className="w-full max-h-48 overflow-y-auto overscroll-contain">
-          <ParticipantList
-            participants={participants}
-            myParticipantId={myParticipantId}
-            hostParticipantId={hostParticipantId}
-          />
-        </div>
-
+      <div className="flex-shrink-0 border-t border-border bg-background px-6 pb-6 pt-4">
         {isCreator ? (
           <div className="flex w-full flex-col items-center gap-2">
             <button
@@ -418,19 +426,11 @@ export function SessionRoom({
             {startError && <p className="text-sm text-red-500">{startError}</p>}
           </div>
         ) : (
-          <p className="text-sm text-foreground-muted">
+          <p className="text-center text-sm text-foreground-muted">
             Waiting for the host to start the SyncUp…
           </p>
         )}
-
-        {/* On a viewport short enough that this screen needs to scroll,
-            this gives the Start button room to clear ThemeToggle's fixed
-            bottom-right circle once scrolled all the way down — a trailing
-            spacer can't move the button itself (nothing after it in a
-            top-down flex column repositions what came before), it just
-            means there's still somewhere to scroll to past it. */}
-        <div aria-hidden className="h-10 w-full flex-shrink-0" />
       </div>
-    </>
+    </div>
   );
 }

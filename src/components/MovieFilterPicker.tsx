@@ -109,33 +109,40 @@ export function MovieFilterPicker({
         All Movies
       </button>
 
+      {/* One bordered pill, not a text label with a separate circular
+          button floated to the far edge — that read as two disconnected
+          things instead of one control. The chevron sits right against
+          the text it belongs to, and the whole pill (not just the icon)
+          is the tap target, which is a bigger, easier hit area than a
+          bare 40px circle was anyway. */}
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex items-center justify-between gap-3 py-1"
+        className="inline-flex w-fit items-center gap-2 rounded-pill border border-border bg-surface px-4 py-[10px] shadow-card transition-[background-color,transform,scale] duration-150 ease-out active:scale-[0.97]"
       >
         <span
           className={`text-sm font-semibold ${open ? "text-foreground" : "text-foreground-muted"}`}
         >
           Narrow it down <span className="font-medium text-foreground-muted">(optional)</span>
         </span>
-        {/* A real ~40px button, not a bare icon — easy to tap without
-            aiming, and rotates to signal open/closed state. */}
-        <span
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-pill border border-border bg-surface shadow-card transition-transform duration-200 ease-out"
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden
+          className="flex-shrink-0 text-foreground-muted transition-transform duration-200 ease-out"
           style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M6 9l6 6 6-6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
+          <path
+            d="M6 9l6 6 6-6"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </button>
 
       <AnimatePresence initial={false}>

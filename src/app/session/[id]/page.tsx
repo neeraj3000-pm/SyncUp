@@ -22,16 +22,16 @@ export default async function SessionPage({
   const serverNow = new Date().toISOString();
 
   return (
-    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center gap-8 overflow-y-auto overscroll-contain px-6 py-6">
-      {/* Top-anchored, not justify-end: pushing the WAITING-room content
-          toward the bottom of the viewport for easier one-handed reach
-          sounded good in principle, but on a real (shorter) phone
-          viewport it meant content taller than the screen overflowed
-          off the TOP instead of the bottom — hiding the "Your SyncUp"
-          heading above the fold rather than requiring an obvious scroll
-          down. Normal top-down flow guarantees the heading is always
-          visible; SessionRoom's own layout below still gets the Start
-          button as close to the bottom as the content allows. */}
+    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center">
+      {/* No padding/overflow/gap here — each of SessionRoom's branches
+          owns its own now, since the WAITING branch needs a fixed
+          footer (the Start button, always on screen) with only the
+          content above it scrolling, while ACTIVE fills this whole
+          area itself. A shared "one size fits all" wrapper couldn't do
+          both. Top-anchored is still the rule throughout: pushing
+          content toward the bottom (the earlier reachability pass)
+          overflowed off the TOP on a short real phone viewport, hiding
+          the heading — normal top-down flow keeps it always visible. */}
       <SessionRoom
         session={session}
         participants={participants}
