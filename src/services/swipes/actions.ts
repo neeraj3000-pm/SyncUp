@@ -1,9 +1,10 @@
 "use server";
 
+import type { ActionResult } from "@/lib/action-result";
+import { isUuid } from "@/lib/validation";
 import {
   getMySwipedItemIds,
   getSessionProgress,
-  markParticipantFinished,
   recordSwipe,
   type ParticipantProgress,
   type SwipeDirection,
@@ -14,10 +15,15 @@ import {
   getSessionItems,
   type SessionItemRow,
 } from "@/services/candidates";
-
-type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
+import { getSessionById, markParticipantFinished } from "@/services/sessions";
 
 const VALID_DIRECTIONS: SwipeDirection[] = ["SYNC", "PASS"];
+
+// Every "Show Me More" batch is a round of paid provider calls (TMDB,
+// Google Places) — a generous ceiling keeps a stuck client or a scripted
+// caller from running that up without limit.
+const MAX_BATCHES = 10;
+const MAX_LOOKAHEAD_BATCHES = 3;
 
 export async function swipeAction(input: {
   sessionId: string;
@@ -27,18 +33,16 @@ export async function swipeAction(input: {
   superLiked?: boolean;
 }): Promise<ActionResult<null>> {
   if (
-    typeof input.sessionId !== "string" ||
-    typeof input.participantId !== "string" ||
-    typeof input.itemId !== "string" ||
+    !isUuid(input.sessionId) ||
+    !isUuid(input.participantId) ||
+    !isUuid(input.itemId) ||
     !VALID_DIRECTIONS.includes(input.direction as SwipeDirection) ||
     (input.superLiked !== undefined && typeof input.superLiked !== "boolean")
   ) {
     return { ok: false, error: "Invalid swipe." };
   }
 
-  // A Pass can't be a super-like (matches the DB constraint) — silently
-  // drop the flag rather than error, since it can only mean the client
-  // sent a stale/mismatched combination, not a real user action.
+  // A Pass can't be a super-like (matches the DB constraint).
   const superLiked = input.superLiked === true && input.direction === "SYNC";
 
   try {
@@ -56,21 +60,40 @@ export async function swipeAction(input: {
   }
 }
 
-// PRD section 12: "Show Me 50 More" once a participant reaches the end of
-// the current batch. Returns the session's full, updated item list so the
-// client can just replace its deck rather than reconcile a partial diff.
+// PRD section 12: "Show Me 50 More". Returns the session's full, updated
+// item list so the client can replace its deck rather than merge a diff.
 export async function requestMoreCandidatesAction(input: {
   sessionId: string;
 }): Promise<ActionResult<SessionItemRow[]>> {
-  if (typeof input.sessionId !== "string") {
+  if (!isUuid(input.sessionId)) {
     return { ok: false, error: "Invalid request." };
   }
 
   try {
-    const nextBatch = (await getMaxBatchNumber(input.sessionId)) + 1;
-    await generateCandidatePool(input.sessionId, nextBatch);
-    const items = await getSessionItems(input.sessionId);
-    return { ok: true, data: items };
+    const [session, maxBatch] = await Promise.all([
+      getSessionById(input.sessionId),
+      getMaxBatchNumber(input.sessionId),
+    ]);
+    if (session?.status !== "ACTIVE") {
+      return { ok: false, error: "This SyncUp isn't active anymore." };
+    }
+    if (maxBatch >= MAX_BATCHES) {
+      return { ok: false, error: "That's everything we've got for this SyncUp." };
+    }
+
+    // A batch can come back with nothing new (all duplicates, or everything
+    // filtered out). The batch number is derived from what's stored, so
+    // without looking a little further ahead, a retry would just request
+    // the same empty batch forever.
+    let added = 0;
+    const lastBatch = Math.min(maxBatch + MAX_LOOKAHEAD_BATCHES, MAX_BATCHES);
+    for (let batch = maxBatch + 1; batch <= lastBatch && added === 0; batch++) {
+      added = await generateCandidatePool(session, batch);
+    }
+    if (added === 0) {
+      return { ok: false, error: "No new options found — that's everything for now." };
+    }
+    return { ok: true, data: await getSessionItems(input.sessionId) };
   } catch (error) {
     console.error("requestMoreCandidatesAction failed:", error);
     return { ok: false, error: "Couldn't load more — please try again." };
@@ -81,9 +104,11 @@ export async function getMySwipedItemIdsAction(input: {
   sessionId: string;
   participantId: string;
 }): Promise<ActionResult<string[]>> {
+  if (!isUuid(input.sessionId) || !isUuid(input.participantId)) {
+    return { ok: false, error: "Invalid request." };
+  }
   try {
-    const ids = await getMySwipedItemIds(input.sessionId, input.participantId);
-    return { ok: true, data: Array.from(ids) };
+    return { ok: true, data: await getMySwipedItemIds(input.sessionId, input.participantId) };
   } catch (error) {
     console.error("getMySwipedItemIdsAction failed:", error);
     return { ok: false, error: "Couldn't load your progress." };
@@ -93,18 +118,17 @@ export async function getMySwipedItemIdsAction(input: {
 export async function getSessionProgressAction(
   sessionId: string,
 ): Promise<ActionResult<ParticipantProgress[]>> {
+  if (!isUuid(sessionId)) return { ok: false, error: "Invalid request." };
   try {
-    const progress = await getSessionProgress(sessionId);
-    return { ok: true, data: progress };
+    return { ok: true, data: await getSessionProgress(sessionId) };
   } catch (error) {
     console.error("getSessionProgressAction failed:", error);
     return { ok: false, error: "Couldn't load progress." };
   }
 }
 
-export async function markFinishedAction(
-  participantId: string,
-): Promise<ActionResult<null>> {
+export async function markFinishedAction(participantId: string): Promise<ActionResult<null>> {
+  if (!isUuid(participantId)) return { ok: false, error: "Invalid request." };
   try {
     await markParticipantFinished(participantId);
     return { ok: true, data: null };

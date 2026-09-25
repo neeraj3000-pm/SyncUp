@@ -10,7 +10,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "SyncUp — Stop debating. SyncUp.",
+  title: "SyncUp! — Stop debating. SyncUp!",
   description:
     "Swipe with the people you're with. SyncUp finds what everyone actually wants to watch or eat.",
   manifest: "/manifest.json",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     // options would instead show a plain white or black strip that
     // clashes with the app's own cream/navy background.
     statusBarStyle: "black-translucent",
-    title: "SyncUp",
+    title: "SyncUp!",
   },
 };
 
@@ -67,13 +67,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       // for this pattern, same as libraries like next-themes use).
       suppressHydrationWarning
     >
-      {/* The one hard boundary: nothing scrolls at the document level, ever
-          — see globals.css's comment on why. Any screen with more content
-          than fits provides its own internal scroll region instead of
-          letting the whole page grow past the viewport (the scroll/swipe
-          gesture conflict flagged during Sprint 5 testing). Safe-area
-          padding lives here once, so no individual page has to remember
-          it. */}
+      {/* Nothing scrolls at the document level (see globals.css); a screen
+          with more content than fits provides its own scroll region.
+          Safe-area padding lives here once for every page. */}
       <body className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
         {/* Applies a saved theme choice to <html> before the rest of the
             page paints — without this, ThemeToggle's own effect would run

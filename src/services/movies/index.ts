@@ -1,4 +1,9 @@
 import "server-only";
+import type {
+  MovieFilter,
+  MovieGenreSlug,
+  MovieLanguageSlug,
+} from "@/services/movies/filters";
 
 // PRD section 37: movie content flows through a provider abstraction, never
 // called directly from the UI. TMDB is the provider (CLAUDE.md — chosen
@@ -27,6 +32,31 @@ interface TmdbGenre {
   name: string;
 }
 
+// TMDB's own genre ids (from /genre/movie/list) — fixed and stable enough
+// to hardcode for the 8 this app actually offers, rather than resolving a
+// slug through getGenreMap() (built for the opposite direction: id → name,
+// for card metadata) on every candidate-pool generation.
+const GENRE_TMDB_IDS: Record<MovieGenreSlug, number> = {
+  action: 28,
+  comedy: 35,
+  drama: 18,
+  horror: 27,
+  "sci-fi": 878,
+  thriller: 53,
+  romance: 10749,
+  animation: 16,
+};
+
+// ISO 639-1 codes, for TMDB's with_original_language discover param.
+const LANGUAGE_ISO_CODES: Record<MovieLanguageSlug, string> = {
+  hindi: "hi",
+  tamil: "ta",
+  telugu: "te",
+  kannada: "kn",
+  malayalam: "ml",
+  marathi: "mr",
+};
+
 async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): Promise<T> {
   const url = new URL(`${TMDB_BASE}${path}`);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
@@ -49,12 +79,16 @@ async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): 
 
 let genreMapPromise: Promise<Map<number, string>> | null = null;
 
+// Module-level cache: the genre list is effectively static. A failed fetch
+// is dropped from the cache rather than kept, or every later pool
+// generation on this server instance would reuse the same rejection.
 function getGenreMap(): Promise<Map<number, string>> {
-  // Module-level cache: the genre list is effectively static, no reason to
-  // refetch it once per candidate-pool generation.
-  genreMapPromise ??= tmdbFetch<{ genres: TmdbGenre[] }>("/genre/movie/list").then(
-    (data) => new Map(data.genres.map((g) => [g.id, g.name])),
-  );
+  genreMapPromise ??= tmdbFetch<{ genres: TmdbGenre[] }>("/genre/movie/list")
+    .then((data) => new Map(data.genres.map((g) => [g.id, g.name])))
+    .catch((error) => {
+      genreMapPromise = null;
+      throw error;
+    });
   return genreMapPromise;
 }
 
@@ -88,14 +122,54 @@ function normalizeMovie(raw: TmdbMovieSummary, genreMap: Map<number, string>): N
 // against whatever the session has already shown (see services/candidates).
 const PAGES_PER_BATCH = 3;
 
-export async function getMoviePool(batchNumber: number, count = 50): Promise<NormalizedItem[]> {
-  const genreMap = await getGenreMap();
+// Turns a UI-picked filter into the actual TMDB request — the one place
+// that knows which endpoint/param each filter kind needs, so neither the
+// UI nor the category-agnostic candidate-pool pipeline has to.
+function buildPoolQuery(filter: MovieFilter | null): {
+  path: string;
+  params: Record<string, string>;
+} {
+  if (!filter) return { path: "/movie/popular", params: {} };
+
+  if (filter.kind === "genre") {
+    return {
+      path: "/discover/movie",
+      params: { with_genres: String(GENRE_TMDB_IDS[filter.value]), sort_by: "popularity.desc" },
+    };
+  }
+  if (filter.kind === "language") {
+    return {
+      path: "/discover/movie",
+      params: {
+        with_original_language: LANGUAGE_ISO_CODES[filter.value],
+        sort_by: "popularity.desc",
+      },
+    };
+  }
+  // filter.kind === "discover"
+  if (filter.value === "now_playing_india") {
+    // PRD's own ask: movies currently in Indian theaters, not just
+    // "recently released" — now_playing + region is TMDB's actual
+    // theatrical-release data, not an approximation via date filtering.
+    return { path: "/movie/now_playing", params: { region: "IN" } };
+  }
+  if (filter.value === "top_rated") return { path: "/movie/top_rated", params: {} };
+  return { path: "/movie/popular", params: {} }; // "popular"
+}
+
+export async function getMoviePool(
+  batchNumber: number,
+  filter: MovieFilter | null = null,
+  count = 50,
+): Promise<NormalizedItem[]> {
   const startPage = (batchNumber - 1) * PAGES_PER_BATCH + 1;
-  const pages = await Promise.all(
-    Array.from({ length: PAGES_PER_BATCH }, (_, i) =>
-      tmdbFetch<TmdbListResponse>("/movie/popular", { page: String(startPage + i) }),
+  const { path, params } = buildPoolQuery(filter);
+  const [genreMap, ...pages] = await Promise.all([
+    getGenreMap(),
+    ...Array.from({ length: PAGES_PER_BATCH }, (_, i) =>
+      tmdbFetch<TmdbListResponse>(path, { ...params, page: String(startPage + i) }),
     ),
-  );
+  ]);
 
   const seen = new Set<number>();
   const movies: NormalizedItem[] = [];
@@ -110,7 +184,7 @@ export async function getMoviePool(batchNumber: number, count = 50): Promise<Nor
   return movies;
 }
 
-// ── movie detail (Sprint 4 results/detail view only) ───────────────────
+// ── movie detail (detail sheet only) ───────────────────────────────────
 // Runtime, cast, trailer, and streaming availability all need per-movie
 // TMDB calls the candidate pool deliberately skips (see MovieCard.tsx's
 // comment) — fetching this for all 50 swipe candidates would be slow and
@@ -186,6 +260,8 @@ export interface MovieDetail {
 }
 
 export async function getMovieDetail(externalId: string): Promise<MovieDetail> {
+  // Interpolated into the request path, so only a real TMDB id gets through.
+  if (!/^\d+$/.test(externalId)) throw new Error("Invalid TMDB id");
   const detail = await tmdbFetch<TmdbMovieDetailResponse>(`/movie/${externalId}`, {
     append_to_response: "credits,videos,watch/providers",
   });

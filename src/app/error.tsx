@@ -3,11 +3,8 @@
 import { useEffect } from "react";
 import { ErrorScreen } from "@/components/ErrorScreen";
 
-// Next's App Router catches any error thrown while rendering a server or
-// client component and routes it here instead of crashing the page —
-// without this file, that fallback is Next's own generic, unstyled default,
-// which is what every unhandled failure (Supabase unreachable, a thrown
-// error other than the `notFound()` case) was showing before this existed.
+// Next routes any error thrown while rendering here instead of its own
+// generic, unstyled fallback page.
 export default function GlobalError({
   error,
   reset,

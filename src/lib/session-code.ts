@@ -4,9 +4,6 @@ const ALPHABET = "ABCDEFGHJKLMNPQRTUVWXYZ234679";
 const CODE_LENGTH = 5;
 
 export function generateSessionCode(): string {
-  let code = "";
-  for (let i = 0; i < CODE_LENGTH; i++) {
-    code += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-  }
-  return code;
+  const bytes = crypto.getRandomValues(new Uint32Array(CODE_LENGTH));
+  return Array.from(bytes, (n) => ALPHABET[n % ALPHABET.length]).join("");
 }

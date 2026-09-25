@@ -1,8 +1,7 @@
-import { getCreatorName, getSessionByCode } from "@/services/sessions";
+import { getSessionWithCreatorByCode } from "@/services/sessions";
 import { ErrorScreen } from "@/components/ErrorScreen";
 import { JoinSessionView } from "./JoinSessionView";
 
-const ENDED_STATUSES = new Set(["COMPLETED", "EXPIRED", "CANCELLED"]);
 const TRY_ANOTHER_CODE = { label: "Try another code", href: "/join" } as const;
 
 export default async function JoinByCodePage({
@@ -11,9 +10,9 @@ export default async function JoinByCodePage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  const session = await getSessionByCode(code);
+  const found = await getSessionWithCreatorByCode(code);
 
-  if (!session) {
+  if (!found) {
     return (
       <ErrorScreen
         title="We couldn't find that SyncUp."
@@ -22,6 +21,8 @@ export default async function JoinByCodePage({
       />
     );
   }
+
+  const { session, creatorName } = found;
 
   if (session.status === "ACTIVE") {
     return (
@@ -33,20 +34,18 @@ export default async function JoinByCodePage({
     );
   }
 
-  if (ENDED_STATUSES.has(session.status)) {
+  if (session.status !== "WAITING") {
     return (
       <ErrorScreen
         title="This SyncUp has ended."
         body="Start a new one instead."
-        action={TRY_ANOTHER_CODE}
+        action={{ label: "Start a new SyncUp!", href: "/create" }}
       />
     );
   }
 
-  const creatorName = await getCreatorName(session.id);
-
   return (
-    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-end gap-8 overflow-y-auto overscroll-contain px-6 pb-28 pt-12">
+    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center gap-8 overflow-y-auto overscroll-contain px-6 py-12">
       <JoinSessionView
         sessionId={session.id}
         category={session.category}

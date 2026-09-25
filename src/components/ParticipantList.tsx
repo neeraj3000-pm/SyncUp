@@ -19,7 +19,7 @@ export function ParticipantList({
   hostParticipantId?: string | null;
 }) {
   return (
-    <ul className="flex w-full flex-col gap-2" role="status" aria-live="polite">
+    <ul className="flex w-full flex-col gap-2" aria-live="polite">
       {participants.map((p, i) => (
         <li
           key={p.id}

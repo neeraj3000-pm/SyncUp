@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { buttonSecondary } from "@/lib/ui";
 
 type Action = { label: string } & ({ href: string } | { onClick: () => void });
 
@@ -15,9 +16,6 @@ export function ErrorScreen({
   body: string;
   action: Action;
 }) {
-  const actionClassName =
-    "rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]";
-
   return (
     <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-center gap-6 overflow-y-auto overscroll-contain px-6 py-12 text-center">
       <div className="flex flex-col gap-2">
@@ -25,11 +23,11 @@ export function ErrorScreen({
         <p className="text-foreground-muted">{body}</p>
       </div>
       {"href" in action ? (
-        <Link href={action.href} className={actionClassName}>
+        <Link href={action.href} className={buttonSecondary}>
           {action.label}
         </Link>
       ) : (
-        <button type="button" onClick={action.onClick} className={actionClassName}>
+        <button type="button" onClick={action.onClick} className={buttonSecondary}>
           {action.label}
         </button>
       )}

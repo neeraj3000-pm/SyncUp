@@ -49,8 +49,14 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      // Top-right, not bottom-right: screens with a primary action now pin
+      // that button to a fixed footer at the very bottom of the screen
+      // (create's "Create SyncUp!", the waiting room's "Start SyncUp!"),
+      // and a bottom-right floating circle there sat directly on top of
+      // it. Nothing else in this app claims the top-right corner, so this
+      // is genuinely free real estate instead of just a smaller collision.
       className="fixed right-4 z-40 flex h-11 w-11 items-center justify-center rounded-pill border border-border bg-surface text-foreground shadow-md transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
-      style={{ bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+      style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
     >
       {theme === "dark" ? <MoonIcon /> : <SunIcon />}
     </button>

@@ -7,6 +7,7 @@ import { JoinForm } from "@/components/JoinForm";
 import { CategoryLabel } from "@/components/CategoryLabel";
 import { CardFanHero } from "@/components/CardFanHero";
 import { EatIcon, WatchIcon } from "@/components/icons/CategoryIcons";
+import type { SessionCategory } from "@/services/sessions";
 
 export function JoinSessionView({
   sessionId,
@@ -14,7 +15,7 @@ export function JoinSessionView({
   creatorName,
 }: {
   sessionId: string;
-  category: string;
+  category: SessionCategory;
   creatorName: string | null;
 }) {
   const router = useRouter();
@@ -30,6 +31,8 @@ export function JoinSessionView({
 
   if (storedParticipantId !== null) return null;
 
+  const CategoryIcon = category === "WATCH" ? WatchIcon : EatIcon;
+
   return (
     <>
       {/* Same atmospheric glow as join/page.tsx and the waiting room —
@@ -39,22 +42,18 @@ export function JoinSessionView({
         aria-hidden
         className="pointer-events-none fixed left-1/2 top-[50vh] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.14] blur-[80px]"
       />
-      {/* flex-1 + min-h-0: fills the rest of main's height itself, so
-          CardFanHero's own flex-1 has something to grow into and actually
-          fills the empty space above the heading — same "brand
-          illustration in the leftover space" move as landing, just above
-          a bottom-anchored form instead of between two buttons and a
-          footer. */}
+      {/* min-h-0 + flex-1: fills the rest of main's height itself, so the
+          spacer right below has real leftover space to absorb. */}
       <div className="relative flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
+        {/* Absorbs spare height, shrinking to zero on short screens (see
+            CardFanHero). */}
+        <div className="min-h-0 flex-1" />
         <CardFanHero />
         {/* Which category this particular invite is for, once more and
             bigger than CategoryLabel's small inline icon in the heading
             below — echoes the create page's own Watch/Eat icons rather
             than introducing a third icon style. */}
-        {category === "WATCH" && (
-          <WatchIcon className="h-14 w-14 text-primary" strokeWidth={2.25} />
-        )}
-        {category === "EAT" && <EatIcon className="h-14 w-14 text-primary" strokeWidth={2.25} />}
+        <CategoryIcon className="h-14 w-14 text-primary" strokeWidth={2.25} />
         <div className="flex flex-col gap-2">
           <h1 className="text-lg">
             {creatorName ? (
