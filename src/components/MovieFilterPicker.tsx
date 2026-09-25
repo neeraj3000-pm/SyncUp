@@ -211,7 +211,7 @@ export function MovieFilterPicker({
                         type="button"
                         onClick={() => selectChip(activeTab, opt.value)}
                         aria-pressed={selected}
-                        className={`rounded-pill px-4 py-[9px] text-[13.5px] font-semibold shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
+                        className={`rounded-pill px-4 py-[9px] text-[13.5px] font-semibold shadow-chip transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                           selected
                             ? "border border-primary bg-surface-raised text-primary"
                             : "border border-border bg-surface text-foreground"

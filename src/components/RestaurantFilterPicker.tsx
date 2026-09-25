@@ -175,7 +175,7 @@ export function RestaurantFilterPicker({
                 type="button"
                 onClick={() => update({ openNow: !current.openNow })}
                 aria-pressed={current.openNow}
-                className={`w-fit rounded-pill px-4 py-[9px] text-[13.5px] font-semibold shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
+                className={`w-fit rounded-pill px-4 py-[9px] text-[13.5px] font-semibold shadow-chip transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                   current.openNow
                     ? "border border-primary bg-surface-raised text-primary"
                     : "border border-border bg-surface text-foreground"
@@ -230,7 +230,7 @@ export function RestaurantFilterPicker({
                           type="button"
                           onClick={() => update({ cuisine: selected ? null : opt.value })}
                           aria-pressed={selected}
-                          className={`rounded-pill px-4 py-[9px] text-[13.5px] font-semibold shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
+                          className={`rounded-pill px-4 py-[9px] text-[13.5px] font-semibold shadow-chip transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                             selected
                               ? "border border-primary bg-surface-raised text-primary"
                               : "border border-border bg-surface text-foreground"
@@ -249,7 +249,7 @@ export function RestaurantFilterPicker({
                           type="button"
                           onClick={() => update({ price: selected ? null : opt.value })}
                           aria-pressed={selected}
-                          className={`rounded-pill px-4 py-[9px] text-[13.5px] font-semibold shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
+                          className={`rounded-pill px-4 py-[9px] text-[13.5px] font-semibold shadow-chip transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                             selected
                               ? "border border-primary bg-surface-raised text-primary"
                               : "border border-border bg-surface text-foreground"
@@ -269,7 +269,7 @@ export function RestaurantFilterPicker({
                           type="button"
                           onClick={() => update({ distanceKm: selected ? null : km })}
                           aria-pressed={selected}
-                          className={`rounded-pill px-4 py-[9px] text-[13.5px] font-semibold shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
+                          className={`rounded-pill px-4 py-[9px] text-[13.5px] font-semibold shadow-chip transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                             selected
                               ? "border border-primary bg-surface-raised text-primary"
                               : "border border-border bg-surface text-foreground"

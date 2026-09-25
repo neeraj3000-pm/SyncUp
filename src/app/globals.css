@@ -45,6 +45,14 @@
      looking like a default framework shadow. */
   --shadow-card:
     0 1px 2px rgba(43, 45, 66, 0.04), 0 6px 16px -4px rgba(43, 45, 66, 0.08);
+  /* A lighter elevation for small option chips packed tightly in a wrapped
+     grid (MovieFilterPicker/RestaurantFilterPicker's per-tab rows) —
+     shadow-card's 6-16px spread was tuned for standalone cards with real
+     space around them; on chips a couple of pixels apart it stacked
+     between rows into one solid shadowed band, reading as a boxed panel
+     instead of each chip floating independently. Single small offset, no
+     spread, so neighbors don't visually merge. */
+  --shadow-chip: 0 1px 2px rgba(43, 45, 66, 0.06);
 }
 
 :root[data-theme="dark"] {
@@ -68,6 +76,7 @@
      here instead, the same way most dark-mode UIs handle this. */
   --shadow-card:
     0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 20px -4px rgba(0, 0, 0, 0.35);
+  --shadow-chip: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -85,6 +94,7 @@
     --color-sync: #23e07a;
     --shadow-card:
       0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 20px -4px rgba(0, 0, 0, 0.35);
+    --shadow-chip: 0 1px 2px rgba(0, 0, 0, 0.18);
   }
 }
 
@@ -103,6 +113,7 @@
   --radius-card: var(--radius-card);
   --radius-pill: var(--radius-pill);
   --shadow-card: var(--shadow-card);
+  --shadow-chip: var(--shadow-chip);
   --font-sans: var(--font-manrope);
 }
 
