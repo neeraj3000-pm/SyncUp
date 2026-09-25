@@ -15,13 +15,22 @@ export default function JoinLandingPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-center gap-8 overflow-y-auto overscroll-contain px-6 py-12 text-center">
-      <div className="flex flex-col gap-2">
+    <main className="relative mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-center gap-8 overflow-y-auto overscroll-contain px-6 py-12 text-center">
+      {/* Same atmospheric glow as the landing page (same reasoning: fills
+          the empty space a justify-center column leaves on a tall phone
+          screen) — no card illustration here, though, since this screen's
+          whole job is "enter code, go fast," not a moment to linger on. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.14] blur-[80px]"
+      />
+
+      <div className="relative flex flex-col gap-2">
         <h1 className="text-2xl font-bold leading-tight tracking-tight">Join a SyncUp</h1>
         <p className="text-foreground-muted">Enter the code you were sent.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
+      <form onSubmit={handleSubmit} className="relative flex w-full flex-col gap-4">
         <input
           autoFocus
           maxLength={5}
