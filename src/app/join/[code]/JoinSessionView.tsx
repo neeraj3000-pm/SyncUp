@@ -51,8 +51,10 @@ export function JoinSessionView({
             bigger than CategoryLabel's small inline icon in the heading
             below — echoes the create page's own Watch/Eat icons rather
             than introducing a third icon style. */}
-        {category === "WATCH" && <WatchIcon className="h-9 w-9 text-primary" />}
-        {category === "EAT" && <EatIcon className="h-9 w-9 text-primary" />}
+        {category === "WATCH" && (
+          <WatchIcon className="h-14 w-14 text-primary" strokeWidth={2.25} />
+        )}
+        {category === "EAT" && <EatIcon className="h-14 w-14 text-primary" strokeWidth={2.25} />}
         <div className="flex flex-col gap-2">
           <h1 className="text-lg">
             {creatorName ? (
