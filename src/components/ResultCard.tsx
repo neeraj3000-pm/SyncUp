@@ -1,4 +1,5 @@
 import type { MatchRow } from "@/services/matching";
+import { joinParts } from "@/lib/format";
 import { SyncScore } from "@/components/SyncScore";
 
 // PRD section 32/33: the card itself stays simple — title, poster, score,
@@ -11,7 +12,7 @@ export function ResultCard({ match, onTap }: { match: MatchRow; onTap: () => voi
     address?: string | null;
   };
   const subtitle =
-    match.item.category === "WATCH" ? meta.year : [meta.cuisine, meta.address].filter(Boolean).join(" · ");
+    match.item.category === "WATCH" ? meta.year : joinParts([meta.cuisine, meta.address]);
   // PRD section 32/33: a perfect match gets a standout treatment — reserved
   // for 100% so it stays a genuine "everyone agreed" signal, not decoration
   // repeated on every card in the list.
@@ -34,6 +35,8 @@ export function ResultCard({ match, onTap }: { match: MatchRow; onTap: () => voi
         <img
           src={match.item.image_url}
           alt={match.item.title}
+          loading="lazy"
+          decoding="async"
           className="h-24 w-16 flex-shrink-0 rounded-md object-cover"
         />
       ) : (

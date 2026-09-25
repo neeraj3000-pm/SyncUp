@@ -6,23 +6,12 @@
 // and dark — --foreground/--secondary would flip on it in a way the real
 // icon never does.
 //
-// Deliberately a fixed size, not flex-1 the way this used to grow to fill
-// leftover space itself: a flex item with flex-basis 0% (Tailwind's
-// flex-1) turned out not to shrink back down toward its min-height under
-// real overflow the way that reasoning assumed — it just rendered at
-// whatever the browser computed, past the viewport, pushing content below
-// the fold. A plain zero-basis spacer div in each caller (no min-height
-// of its own to get stuck above) is what reliably shrinks to nothing when
-// space is tight; this component just renders at its natural size next to
-// one of those.
+// Deliberately a fixed size: a flex-1 illustration doesn't reliably shrink
+// under overflow and pushed content below the fold on short screens.
+// Callers put a plain zero-basis spacer next to it to absorb extra space.
 //
-// Each card also gets a border-border outline — the leftmost card's fixed
-// #2b2d42 is the exact same value as --background in dark mode, so
-// without one it just disappeared into the page there (only the shadow
-// gave it away). border-border already flips between a near-white and a
-// muted violet-navy per theme, which happens to read against all three
-// fixed card colors in both themes, so one outline treatment covers it
-// rather than a dark-mode-specific fix on the left card alone.
+// The border-border outline keeps the leftmost card (#2b2d42, identical to
+// the dark-mode background) visible in dark mode.
 export function CardFanHero() {
   return (
     <div aria-hidden className="flex items-center justify-center py-2">

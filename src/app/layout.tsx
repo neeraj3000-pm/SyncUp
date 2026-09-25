@@ -67,13 +67,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       // for this pattern, same as libraries like next-themes use).
       suppressHydrationWarning
     >
-      {/* The one hard boundary: nothing scrolls at the document level, ever
-          — see globals.css's comment on why. Any screen with more content
-          than fits provides its own internal scroll region instead of
-          letting the whole page grow past the viewport (the scroll/swipe
-          gesture conflict flagged during Sprint 5 testing). Safe-area
-          padding lives here once, so no individual page has to remember
-          it. */}
+      {/* Nothing scrolls at the document level (see globals.css); a screen
+          with more content than fits provides its own scroll region.
+          Safe-area padding lives here once for every page. */}
       <body className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
         {/* Applies a saved theme choice to <html> before the rest of the
             page paints — without this, ThemeToggle's own effect would run

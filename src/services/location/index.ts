@@ -1,15 +1,11 @@
 import "server-only";
+import { PLACES_BASE, placesHeaders } from "@/services/google-places";
 
 // PRD section 13/39: location handling stays behind its own provider layer,
 // same as movies/restaurants — separate from services/restaurants because
 // it's a genuinely different Places API family (Autocomplete + Place
 // Details for resolving a typed search into coordinates, not Nearby/Text
 // Search for finding restaurants once a location is known).
-const PLACES_BASE = "https://places.googleapis.com/v1";
-
-function apiKey(): string {
-  return process.env.GOOGLE_PLACES_API_KEY ?? "";
-}
 
 export interface LocationSuggestion {
   placeId: string;
@@ -31,10 +27,7 @@ export async function getLocationSuggestions(
 
   const res = await fetch(`${PLACES_BASE}/places:autocomplete`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey(),
-    },
+    headers: placesHeaders(),
     body: JSON.stringify({
       input: trimmed,
       sessionToken,
@@ -76,12 +69,7 @@ export async function getLocationDetail(
 ): Promise<LocationDetail | null> {
   const res = await fetch(
     `${PLACES_BASE}/places/${encodeURIComponent(placeId)}?sessionToken=${encodeURIComponent(sessionToken)}`,
-    {
-      headers: {
-        "X-Goog-Api-Key": apiKey(),
-        "X-Goog-FieldMask": "location,formattedAddress",
-      },
-    },
+    { headers: placesHeaders("location,formattedAddress") },
   );
   if (!res.ok) return null;
 

@@ -9,6 +9,7 @@ import type { ItemRow } from "@/services/candidates";
 import { ResultCard } from "@/components/ResultCard";
 import { DetailSheet } from "@/components/DetailSheet";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { buttonSecondary } from "@/lib/ui";
 
 // The reveal is the one moment the whole app builds toward (PRD section
 // 32/33) — worth a cascade instead of the whole list appearing at once
@@ -45,22 +46,11 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
     // wrapper — its children still lay out as direct flex items of the
     // parent <main>, so the existing flex-col/gap-8 spacing is untouched.
     <motion.div variants={container} initial="hidden" animate="show" className="contents">
-      {/* No unanimous winner — Re-Sync is the actual next step here, not a
-          courtesy at the end of a list someone has to scroll past first
-          (which could be every non-100% item the group touched, in a
-          group session), so it sits right next to the result instead of
-          below it: a message card (~2/3 width) plus a Re-Sync pill next to
-          it. minmax(0, …) tracks, not bare fr units — a track can't be
-          forced wider than its share by text that refuses to shrink,
-          which is what let a long sentence squeeze "Re-Sync" onto two
-          lines during design review. The message uses card corners
-          (rounded-card, same as ResultCard below), not rounded-pill —
-          pill shape is this app's dedicated "tappable" signal, so giving
-          it to a non-interactive box made it read as a second, dead-
-          looking button; Re-Sync is the only true pill on the row.
-          Only the success path (a perfect match exists) keeps the old
-          centered heading, with Re-Sync at the bottom below the win —
-          see there. */}
+      {/* No unanimous winner: Re-Sync is the real next step, so it sits
+          beside the message instead of below a list to scroll past.
+          minmax(0, …) tracks stop long text from squeezing "Re-Sync" onto
+          two lines. The message uses card corners, not a pill — pills are
+          this app's "tappable" signal. */}
       {perfect.length === 0 ? (
         <motion.div
           variants={item}
@@ -121,10 +111,7 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
           no-perfect-match version lives at the top instead, see above. */}
       {perfect.length > 0 && (
         <motion.div variants={item}>
-          <Link
-            href={`/create?category=${session.category}`}
-            className="w-full rounded-pill border border-border px-8 py-4 text-center text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
-          >
+          <Link href={`/create?category=${session.category}`} className={`block w-full ${buttonSecondary}`}>
             Re-Sync
           </Link>
         </motion.div>

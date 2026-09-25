@@ -1,5 +1,7 @@
 "use server";
 
+import type { ActionResult } from "@/lib/action-result";
+import { isUuid } from "@/lib/validation";
 import {
   getLocationDetail,
   getLocationSuggestions,
@@ -7,15 +9,17 @@ import {
   type LocationSuggestion,
 } from "@/services/location";
 
-type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
+const MAX_INPUT_LENGTH = 100;
 
 export async function getLocationSuggestionsAction(
   input: string,
   sessionToken: string,
 ): Promise<ActionResult<LocationSuggestion[]>> {
+  if (typeof input !== "string" || input.length > MAX_INPUT_LENGTH || !isUuid(sessionToken)) {
+    return { ok: false, error: "Invalid request." };
+  }
   try {
-    const suggestions = await getLocationSuggestions(input, sessionToken);
-    return { ok: true, data: suggestions };
+    return { ok: true, data: await getLocationSuggestions(input, sessionToken) };
   } catch (error) {
     console.error("getLocationSuggestionsAction failed:", error);
     return { ok: false, error: "Couldn't load suggestions." };
@@ -26,6 +30,9 @@ export async function getLocationDetailAction(
   placeId: string,
   sessionToken: string,
 ): Promise<ActionResult<LocationDetail>> {
+  if (typeof placeId !== "string" || placeId.length === 0 || !isUuid(sessionToken)) {
+    return { ok: false, error: "Invalid request." };
+  }
   try {
     const detail = await getLocationDetail(placeId, sessionToken);
     if (!detail) return { ok: false, error: "Couldn't resolve that location." };

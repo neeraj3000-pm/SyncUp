@@ -1,10 +1,7 @@
 import type { SessionCategory } from "@/services/sessions";
 import { EatIcon, WatchIcon } from "@/components/icons/CategoryIcons";
 
-// The single source for "what does this category say/look like," so
-// SessionRoom's waiting room and JoinSessionView (previously two separate
-// copies of the same emoji-suffixed string) can't drift from each other,
-// or from the create page's own icons.
+// The single source for how a category reads inline in a sentence.
 const LABEL: Record<SessionCategory, string> = {
   WATCH: "what to watch",
   EAT: "where to eat",
@@ -15,18 +12,11 @@ const ICON: Record<SessionCategory, typeof WatchIcon> = {
   EAT: EatIcon,
 };
 
-export function CategoryLabel({ category }: { category: string }) {
-  const isKnown = category === "WATCH" || category === "EAT";
-  if (!isKnown) return <>{category}</>;
-
+export function CategoryLabel({ category }: { category: SessionCategory }) {
   const Icon = ICON[category];
   // inline-block + align-middle on the icon itself, not an inline-flex
-  // wrapper around both — inline-flex has no real baseline of its own, so
-  // browsers fall back to aligning its margin-box bottom edge against the
-  // surrounding sentence's text baseline, which is what was floating the
-  // icon above and to the side of the word before it (worse on Android
-  // Chrome than in the earlier desktop-browser testing here). This is the
-  // standard, predictable pattern for "icon next to inline text" instead.
+  // wrapper: inline-flex has no baseline of its own, so browsers misalign
+  // it against the surrounding sentence (most visibly on Android Chrome).
   return (
     <span className="whitespace-nowrap">
       {LABEL[category]}

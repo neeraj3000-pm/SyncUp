@@ -1,19 +1,17 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setStoredParticipantId, useGuestId } from "@/lib/guest";
+import { buttonPrimary } from "@/lib/ui";
 import { createSessionAction } from "@/services/sessions/actions";
-import {
-  getLocationDetailAction,
-  getLocationSuggestionsAction,
-} from "@/services/location/actions";
-import type { LocationSuggestion } from "@/services/location";
+import type { SessionCategory } from "@/services/sessions";
+import type { MovieFilter } from "@/services/movies/filters";
+import type { RestaurantFilter } from "@/services/restaurants/filters";
 import { EatIcon, WatchIcon } from "@/components/icons/CategoryIcons";
+import { EMPTY_LOCATION, LocationPicker, type LocationValue } from "@/components/LocationPicker";
 import { MovieFilterPicker } from "@/components/MovieFilterPicker";
-import type { MovieFilter } from "@/services/movies";
 import { RestaurantFilterPicker } from "@/components/RestaurantFilterPicker";
-import type { RestaurantFilter } from "@/services/restaurants";
 
 const CATEGORIES = [
   { value: "WATCH", Icon: WatchIcon, label: "Watch", helper: "Movies and more" },
@@ -43,113 +41,18 @@ function CreateForm() {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category") === "EAT" ? "EAT" : "WATCH";
 
-  const [category, setCategory] = useState<"WATCH" | "EAT">(initialCategory);
+  const [category, setCategory] = useState<SessionCategory>(initialCategory);
   const [movieFilter, setMovieFilter] = useState<MovieFilter | null>(null);
   const [restaurantFilter, setRestaurantFilter] = useState<RestaurantFilter | null>(null);
+  const [location, setLocation] = useState<LocationValue>(EMPTY_LOCATION);
   const [duration, setDuration] = useState(300);
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // EAT only — mutually exclusive with areaText, see the location section
-  // below. Coordinates take priority when both happen to be set (shouldn't
-  // normally happen since picking one clears the other).
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  // Which of the two ways to get coordinates set them — otherwise the "Use
-  // my location" button can't tell its own GPS result apart from a picked
-  // autocomplete suggestion, and would claim "using your current location"
-  // for somewhere the person just typed.
-  const [coordsSource, setCoordsSource] = useState<"gps" | "search" | null>(null);
-  const [areaText, setAreaText] = useState("");
-  const [geoLoading, setGeoLoading] = useState(false);
-  const [geoError, setGeoError] = useState<string | null>(null);
-  // A session token groups the autocomplete keystrokes for one search
-  // together with the Place Details call that follows a pick, so Google
-  // bills the whole flow once instead of per request — null between
-  // searches, generated on the first keystroke, discarded after a pick.
-  // A ref, not state: it's read inside the effect/handlers below but never
-  // drives a render, so there's nothing for React to re-render over.
-  const sessionTokenRef = useRef<string | null>(null);
-  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [resolvingPlaceId, setResolvingPlaceId] = useState<string | null>(null);
-  const [suggestError, setSuggestError] = useState<string | null>(null);
   const router = useRouter();
-
   const guestId = useGuestId();
 
-  const needsLocation = category === "EAT" && !coords && !areaText.trim();
-
-  // Debounced: fetches suggestions ~300ms after typing stops, not per
-  // keystroke — coords already set (just picked a suggestion) means this is
-  // the text catching up to that pick, not a fresh search, so it skips.
-  useEffect(() => {
-    // Every path that empties areaText or sets coords (onChange, the two
-    // "Use my location" outcomes, a successful pick) already clears
-    // suggestions itself at the source — nothing left for this branch to do
-    // but bail out.
-    if (!areaText.trim() || coords) return;
-
-    const token = sessionTokenRef.current ?? crypto.randomUUID();
-    sessionTokenRef.current = token;
-
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      const result = await getLocationSuggestionsAction(areaText, token);
-      if (cancelled) return;
-      if (result.ok) {
-        setSuggestions(result.data);
-        setShowSuggestions(true);
-      }
-    }, 300);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [areaText, coords]);
-
-  async function handlePickSuggestion(suggestion: LocationSuggestion) {
-    setShowSuggestions(false);
-    setSuggestions([]);
-    setSuggestError(null);
-    setResolvingPlaceId(suggestion.placeId);
-
-    const token = sessionTokenRef.current ?? crypto.randomUUID();
-    const result = await getLocationDetailAction(suggestion.placeId, token);
-    setResolvingPlaceId(null);
-    // The session ends at the pick regardless of outcome — a retry after a
-    // failed resolve is a new search, not a continuation of this one.
-    sessionTokenRef.current = null;
-
-    if (!result.ok) {
-      setSuggestError(result.error);
-      return;
-    }
-    setCoords({ lat: result.data.lat, lng: result.data.lng });
-    setCoordsSource("search");
-    setAreaText(suggestion.text);
-  }
-
-  function handleUseMyLocation() {
-    // Only ever called from this button tap — never on page load or when
-    // switching to Eat — so the permission prompt fires only when the
-    // person actually asks for it (PRD section 13).
-    setGeoError(null);
-    setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
-        setCoordsSource("gps");
-        setAreaText("");
-        setGeoLoading(false);
-      },
-      () => {
-        setGeoError("Couldn't get your location. Try entering an area instead.");
-        setGeoLoading(false);
-      },
-      { timeout: 10000 },
-    );
-  }
+  const needsLocation = category === "EAT" && !location.coords && !location.label.trim();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -164,9 +67,9 @@ function CreateForm() {
       durationSeconds: duration,
       creatorGuestId: guestId,
       displayName: trimmedName,
-      locationLat: coords?.lat ?? null,
-      locationLng: coords?.lng ?? null,
-      locationLabel: areaText.trim() || null,
+      locationLat: location.coords?.lat ?? null,
+      locationLng: location.coords?.lng ?? null,
+      locationLabel: location.label.trim() || null,
       movieFilter: category === "WATCH" ? movieFilter : null,
       restaurantFilter: category === "EAT" ? restaurantFilter : null,
     });
@@ -184,201 +87,107 @@ function CreateForm() {
   return (
     <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col">
       <h1 className="sr-only">Create a SyncUp!</h1>
-      {/* Same "fixed shell, one scrollable region" architecture the rest
-          of the app already uses (layout.tsx's body is the outer version
-          of this) — the form fields scroll in here, but "Create SyncUp!"
-          below stays a sibling of this div, outside the scroll area, so
-          it's always on screen instead of something you might scroll
-          past and lose track of. */}
+      {/* The fields scroll in here; "Create SyncUp!" is a sibling outside
+          this region, so it's always on screen. */}
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 pt-12">
-      <div className="flex flex-col gap-10 pb-6">
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground-muted">
-          What are you deciding?
-        </h2>
-        <div className="grid grid-cols-2 gap-3">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              onClick={() => setCategory(c.value)}
-              aria-pressed={category === c.value}
-              className={`flex items-center justify-between gap-3 rounded-card border p-4 text-left shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
-                category === c.value
-                  ? "border-primary bg-surface-raised"
-                  : "border-border bg-surface"
-              }`}
-            >
-              <span className="flex min-w-0 flex-col gap-1">
-                <span className="font-semibold">{c.label}</span>
-                <span className="text-sm text-foreground-muted">{c.helper}</span>
-              </span>
-              <span
-                className={`flex-shrink-0 ${category === c.value ? "text-primary" : "text-foreground-muted"}`}
-              >
-                <c.Icon className="h-9 w-9" />
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
+        <div className="flex flex-col gap-10 pb-6">
+          <section className="flex flex-col gap-4">
+            <h2 className="text-sm font-semibold text-foreground-muted">
+              What are you deciding?
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => setCategory(c.value)}
+                  aria-pressed={category === c.value}
+                  className={`flex items-center justify-between gap-3 rounded-card border p-4 text-left shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
+                    category === c.value
+                      ? "border-primary bg-surface-raised"
+                      : "border-border bg-surface"
+                  }`}
+                >
+                  <span className="flex min-w-0 flex-col gap-1">
+                    <span className="font-semibold">{c.label}</span>
+                    <span className="text-sm text-foreground-muted">{c.helper}</span>
+                  </span>
+                  <span
+                    className={`flex-shrink-0 ${category === c.value ? "text-primary" : "text-foreground-muted"}`}
+                  >
+                    <c.Icon className="h-9 w-9" />
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
 
-      {category === "WATCH" && (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-semibold text-foreground-muted">What do you want to watch?</h2>
-          <MovieFilterPicker value={movieFilter} onChange={setMovieFilter} />
-        </section>
-      )}
-
-      {category === "EAT" && (
-        <section className="flex flex-col gap-4">
-          <h2 id="location-heading" className="text-sm font-semibold text-foreground-muted">
-            Where do you want to eat?
-          </h2>
-          <button
-            type="button"
-            onClick={handleUseMyLocation}
-            disabled={geoLoading}
-            className={`w-full rounded-card border px-4 py-3 text-left font-semibold shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] disabled:opacity-50 ${
-              coordsSource === "gps" ? "border-primary bg-surface-raised" : "border-border bg-surface"
-            }`}
-          >
-            {geoLoading
-              ? "Getting your location…"
-              : coordsSource === "gps"
-                ? "✓ Using your current location"
-                : "📍 Use my location"}
-          </button>
-          {geoError && <p className="text-sm text-red-500">{geoError}</p>}
-          <div className="flex items-center gap-3 text-xs text-foreground-muted">
-            <div className="h-px flex-1 bg-border" />
-            or
-            <div className="h-px flex-1 bg-border" />
-          </div>
-          <div className="relative">
-            <input
-              value={areaText}
-              onChange={(e) => {
-                const value = e.target.value;
-                setAreaText(value);
-                if (value) {
-                  setCoords(null);
-                  setCoordsSource(null);
-                }
-                if (!value.trim()) {
-                  setSuggestions([]);
-                  setShowSuggestions(false);
-                  sessionTokenRef.current = null;
-                }
-              }}
-              onFocus={() => {
-                if (suggestions.length > 0) setShowSuggestions(true);
-              }}
-              onBlur={() => setShowSuggestions(false)}
-              placeholder="Choose an area, e.g. Indiranagar, Bangalore"
-              maxLength={100}
-              autoComplete="off"
-              enterKeyHint="search"
-              role="combobox"
-              aria-labelledby="location-heading"
-              aria-expanded={showSuggestions && suggestions.length > 0}
-              aria-autocomplete="list"
-              aria-controls="location-suggestions"
-              className="w-full rounded-card border border-border bg-surface px-4 py-3 text-lg shadow-card outline-none focus:border-primary"
-            />
-            {showSuggestions && suggestions.length > 0 && (
-              <ul
-                id="location-suggestions"
-                role="listbox"
-                className="absolute z-10 mt-2 w-full overflow-hidden rounded-card border border-border bg-surface shadow-lg"
-              >
-                {suggestions.map((s) => (
-                  <li key={s.placeId} role="option" aria-selected={false}>
-                    <button
-                      type="button"
-                      // Fires before the input's onBlur, so the pick
-                      // registers instead of the dropdown closing first.
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handlePickSuggestion(s)}
-                      className="block w-full px-4 py-3 text-left text-sm transition-colors hover:bg-surface-raised"
-                    >
-                      {s.text}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          {resolvingPlaceId && (
-            <p className="text-xs text-foreground-muted">Getting that location…</p>
+          {category === "WATCH" && (
+            <section className="flex flex-col gap-4">
+              <h2 className="text-sm font-semibold text-foreground-muted">What do you want to watch?</h2>
+              <MovieFilterPicker value={movieFilter} onChange={setMovieFilter} />
+            </section>
           )}
-          {suggestError && <p className="text-sm text-red-500">{suggestError}</p>}
-        </section>
-      )}
 
-      {category === "EAT" && (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-semibold text-foreground-muted">What do you want to eat?</h2>
-          <RestaurantFilterPicker
-            value={restaurantFilter}
-            onChange={setRestaurantFilter}
-            hasCoords={coords !== null}
-          />
-        </section>
-      )}
+          {category === "EAT" && <LocationPicker value={location} onChange={setLocation} />}
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground-muted">
-          How long do you want to decide?
-        </h2>
-        <div className="flex flex-col gap-3">
-          {DURATIONS.map((d) => (
-            <button
-              key={d.value}
-              type="button"
-              onClick={() => setDuration(d.value)}
-              aria-pressed={duration === d.value}
-              className={`flex items-center justify-between rounded-card border px-4 py-3 text-left shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
-                duration === d.value
-                  ? "border-primary bg-surface-raised"
-                  : "border-border bg-surface"
-              }`}
-            >
-              <span className="font-semibold">{d.label}</span>
-              <span className="text-sm text-foreground-muted">{d.helper}</span>
-            </button>
-          ))}
+          {category === "EAT" && (
+            <section className="flex flex-col gap-4">
+              <h2 className="text-sm font-semibold text-foreground-muted">What do you want to eat?</h2>
+              <RestaurantFilterPicker
+                value={restaurantFilter}
+                onChange={setRestaurantFilter}
+                hasCoords={location.coords !== null}
+              />
+            </section>
+          )}
+
+          <section className="flex flex-col gap-4">
+            <h2 className="text-sm font-semibold text-foreground-muted">
+              How long do you want to decide?
+            </h2>
+            <div className="flex flex-col gap-3">
+              {DURATIONS.map((d) => (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => setDuration(d.value)}
+                  aria-pressed={duration === d.value}
+                  className={`flex items-center justify-between rounded-card border px-4 py-3 text-left shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
+                    duration === d.value
+                      ? "border-primary bg-surface-raised"
+                      : "border-border bg-surface"
+                  }`}
+                >
+                  <span className="font-semibold">{d.label}</span>
+                  <span className="text-sm text-foreground-muted">{d.helper}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-4">
+            <h2 id="name-heading" className="text-sm font-semibold text-foreground-muted">
+              What&apos;s your name?
+            </h2>
+            <input
+              autoComplete="name"
+              enterKeyHint="done"
+              maxLength={40}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Neeraj"
+              aria-labelledby="name-heading"
+              className="rounded-card border border-border bg-surface px-4 py-3 text-lg shadow-card outline-none focus:border-primary"
+            />
+            <p className="text-xs text-foreground-muted">
+              Shown to people you invite, e.g. &quot;{name.trim() || "Neeraj"} wants to
+              decide {category === "WATCH" ? "what to watch" : "where to eat"}&quot;.
+            </p>
+          </section>
         </div>
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <h2 id="name-heading" className="text-sm font-semibold text-foreground-muted">
-          What&apos;s your name?
-        </h2>
-        <input
-          autoComplete="name"
-          enterKeyHint="done"
-          maxLength={40}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Neeraj"
-          aria-labelledby="name-heading"
-          className="rounded-card border border-border bg-surface px-4 py-3 text-lg shadow-card outline-none focus:border-primary"
-        />
-        <p className="text-xs text-foreground-muted">
-          Shown to people you invite, e.g. &quot;{name.trim() || "Neeraj"} wants to
-          decide {category === "WATCH" ? "what to watch" : "where to eat"}&quot;.
-        </p>
-      </section>
-      </div>
       </div>
 
-      {/* Outside the scroll region above — a real sibling, not
-          position:sticky/fixed — so it's simply always in view, the
-          same way the whole app's bottom-anchored primary actions
-          already work everywhere content is short enough to not need
-          scrolling at all. A top border + its own background keeps it
-          visually separated from whatever's scrolled up underneath it. */}
       <form
         onSubmit={handleSubmit}
         className="flex-shrink-0 border-t border-border bg-background px-6 pb-6 pt-4"
@@ -387,7 +196,7 @@ function CreateForm() {
         <button
           type="submit"
           disabled={!name.trim() || pending || needsLocation}
-          className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97] disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
+          className={`w-full ${buttonPrimary}`}
         >
           {pending ? "Creating…" : "Create SyncUp!"}
         </button>

@@ -18,7 +18,7 @@ export function SwipeProgress({
   if (progress.length === 0) return null;
 
   return (
-    <ul className="flex w-full flex-col gap-2" role="status" aria-live="polite">
+    <ul className="flex w-full flex-col gap-2" aria-live="polite">
       {progress.map((p) => (
         <li
           key={p.participant_id}

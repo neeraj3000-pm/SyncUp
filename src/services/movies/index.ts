@@ -1,4 +1,9 @@
 import "server-only";
+import type {
+  MovieFilter,
+  MovieGenreSlug,
+  MovieLanguageSlug,
+} from "@/services/movies/filters";
 
 // PRD section 37: movie content flows through a provider abstraction, never
 // called directly from the UI. TMDB is the provider (CLAUDE.md — chosen
@@ -26,56 +31,6 @@ interface TmdbGenre {
   id: number;
   name: string;
 }
-
-// PRD section 11-12's "Step 2 — choose movie pool." A session has at most
-// one of these active (see MovieFilterPicker) — never combined, so a
-// simple tagged union rather than a set of independent toggles. The slugs
-// here are what the UI and the sessions table both deal in; only this
-// file ever translates a slug into a TMDB-specific id/param, per
-// CLAUDE.md's "provider-specific logic stays behind /services/*" rule.
-export type MovieGenreSlug =
-  | "action"
-  | "comedy"
-  | "drama"
-  | "horror"
-  | "sci-fi"
-  | "thriller"
-  | "romance"
-  | "animation";
-export type MovieDiscoverSlug = "now_playing_india" | "popular" | "top_rated";
-export type MovieLanguageSlug = "hindi" | "tamil" | "telugu" | "kannada" | "malayalam" | "marathi";
-
-export type MovieFilter =
-  | { kind: "genre"; value: MovieGenreSlug }
-  | { kind: "discover"; value: MovieDiscoverSlug }
-  | { kind: "language"; value: MovieLanguageSlug };
-
-// Exported so services/sessions/actions.ts can validate a client-submitted
-// filter against the exact same slugs this file knows how to query for,
-// without either side maintaining its own separate copy of the list.
-export const MOVIE_GENRE_SLUGS: readonly MovieGenreSlug[] = [
-  "action",
-  "comedy",
-  "drama",
-  "horror",
-  "sci-fi",
-  "thriller",
-  "romance",
-  "animation",
-];
-export const MOVIE_DISCOVER_SLUGS: readonly MovieDiscoverSlug[] = [
-  "now_playing_india",
-  "popular",
-  "top_rated",
-];
-export const MOVIE_LANGUAGE_SLUGS: readonly MovieLanguageSlug[] = [
-  "hindi",
-  "tamil",
-  "telugu",
-  "kannada",
-  "malayalam",
-  "marathi",
-];
 
 // TMDB's own genre ids (from /genre/movie/list) — fixed and stable enough
 // to hardcode for the 8 this app actually offers, rather than resolving a
@@ -124,12 +79,16 @@ async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): 
 
 let genreMapPromise: Promise<Map<number, string>> | null = null;
 
+// Module-level cache: the genre list is effectively static. A failed fetch
+// is dropped from the cache rather than kept, or every later pool
+// generation on this server instance would reuse the same rejection.
 function getGenreMap(): Promise<Map<number, string>> {
-  // Module-level cache: the genre list is effectively static, no reason to
-  // refetch it once per candidate-pool generation.
-  genreMapPromise ??= tmdbFetch<{ genres: TmdbGenre[] }>("/genre/movie/list").then(
-    (data) => new Map(data.genres.map((g) => [g.id, g.name])),
-  );
+  genreMapPromise ??= tmdbFetch<{ genres: TmdbGenre[] }>("/genre/movie/list")
+    .then((data) => new Map(data.genres.map((g) => [g.id, g.name])))
+    .catch((error) => {
+      genreMapPromise = null;
+      throw error;
+    });
   return genreMapPromise;
 }
 
@@ -203,14 +162,14 @@ export async function getMoviePool(
   filter: MovieFilter | null = null,
   count = 50,
 ): Promise<NormalizedItem[]> {
-  const genreMap = await getGenreMap();
   const startPage = (batchNumber - 1) * PAGES_PER_BATCH + 1;
   const { path, params } = buildPoolQuery(filter);
-  const pages = await Promise.all(
-    Array.from({ length: PAGES_PER_BATCH }, (_, i) =>
+  const [genreMap, ...pages] = await Promise.all([
+    getGenreMap(),
+    ...Array.from({ length: PAGES_PER_BATCH }, (_, i) =>
       tmdbFetch<TmdbListResponse>(path, { ...params, page: String(startPage + i) }),
     ),
-  );
+  ]);
 
   const seen = new Set<number>();
   const movies: NormalizedItem[] = [];
@@ -225,7 +184,7 @@ export async function getMoviePool(
   return movies;
 }
 
-// ── movie detail (Sprint 4 results/detail view only) ───────────────────
+// ── movie detail (detail sheet only) ───────────────────────────────────
 // Runtime, cast, trailer, and streaming availability all need per-movie
 // TMDB calls the candidate pool deliberately skips (see MovieCard.tsx's
 // comment) — fetching this for all 50 swipe candidates would be slow and
@@ -301,6 +260,8 @@ export interface MovieDetail {
 }
 
 export async function getMovieDetail(externalId: string): Promise<MovieDetail> {
+  // Interpolated into the request path, so only a real TMDB id gets through.
+  if (!/^\d+$/.test(externalId)) throw new Error("Invalid TMDB id");
   const detail = await tmdbFetch<TmdbMovieDetailResponse>(`/movie/${externalId}`, {
     append_to_response: "credits,videos,watch/providers",
   });

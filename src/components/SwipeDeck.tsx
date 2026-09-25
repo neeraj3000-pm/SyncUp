@@ -11,19 +11,21 @@ import {
   requestMoreCandidatesAction,
   swipeAction,
 } from "@/services/swipes/actions";
+import { usePolling } from "@/lib/use-polling";
+import { buttonPrimary, buttonSecondary } from "@/lib/ui";
 import { DecisionCard } from "@/components/DecisionCard";
 import { MovieCard } from "@/components/MovieCard";
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { SwipeProgress } from "@/components/SwipeProgress";
 
 const PROGRESS_POLL_MS = 4000;
-// Matches DecisionCard's fling transition (300ms) — the queue only advances
-// once the outgoing card has actually finished animating off-screen.
+// Matches DecisionCard's fling — the queue advances once the outgoing card
+// has finished animating off-screen.
 const ADVANCE_DELAY_MS = 300;
 
+// The one place that picks a presentational card by category —
+// DecisionCard itself stays category-agnostic (PRD section 40).
 function renderCard(category: SessionCategory, item: ItemRow) {
-  // The one place that switches on category to pick a presentational card —
-  // DecisionCard itself stays category-agnostic (PRD section 40).
   switch (category) {
     case "WATCH":
       return <MovieCard item={item} />;
@@ -60,68 +62,56 @@ export function SwipeDeck({
   const [revealPromptDismissed, setRevealPromptDismissed] = useState(false);
   const advancingRef = useRef(false);
 
-  // Resume support: figure out what this participant already swiped (across
-  // a refresh, or rejoining) before showing any card, so already-decided
-  // items never reappear.
+  // Resume support: skip whatever this participant already swiped (after a
+  // refresh or rejoin). Re-runs when "Show Me More" replaces `items`;
+  // swipes within the deck update `queue` directly.
   useEffect(() => {
     let cancelled = false;
     getMySwipedItemIdsAction({ sessionId, participantId }).then((result) => {
       if (cancelled) return;
-      const swiped = result.ok ? new Set(result.data) : new Set<string>();
+      const swiped = new Set(result.ok ? result.data : []);
       setQueue(items.map((si) => si.item).filter((item) => !swiped.has(item.id)));
     });
     return () => {
       cancelled = true;
     };
-    // Re-derives the queue against a fresh swiped-set on mount or when
-    // items are replaced by "Show Me 50 More"; swipes within this deck
-    // update `queue` directly instead of round-tripping through this effect.
   }, [items, sessionId, participantId]);
 
-  // Progress polling: swipes can't be pushed over Realtime without leaking
-  // individual choices (the RLS policy that hides them from other
-  // participants during ACTIVE also hides them from a table-change
-  // subscription), so the aggregate-only session_progress() RPC is polled
-  // instead. See migration 0001/0003.
-  useEffect(() => {
-    let cancelled = false;
-    async function poll() {
-      const result = await getSessionProgressAction(sessionId);
-      if (cancelled || !result.ok) return;
-      setProgress(result.data);
-      // Resume support for "finished," same idea as the swiped-items resume
-      // above: `finished` otherwise only ever gets set by this device's own
-      // "I'm Done" click, so reloading after finishing (or opening the
-      // session on a second tab) would show the pre-done screen again even
-      // though the server already has you marked done — which also hid the
-      // "everyone's done" reveal prompt from ever appearing for you.
-      const mine = result.data.find((p) => p.participant_id === participantId);
-      if (mine?.finished_at) setFinished(true);
+  // Swipes can't go over Realtime without leaking individual choices, so
+  // the aggregate-only session_progress() RPC is polled instead.
+  usePolling(async () => {
+    const result = await getSessionProgressAction(sessionId);
+    if (!result.ok) return;
+    setProgress(result.data);
+    // Resume support for "I'm Done": the server may already have this
+    // participant marked finished (reload, second tab).
+    if (result.data.some((p) => p.participant_id === participantId && p.finished_at)) {
+      setFinished(true);
     }
-    poll();
-    const interval = setInterval(poll, PROGRESS_POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [sessionId, participantId]);
+  }, PROGRESS_POLL_MS);
 
   function handleSwipe(item: ItemRow, direction: "SYNC" | "PASS", superLiked = false) {
     if (advancingRef.current) return;
     advancingRef.current = true;
-    // A previous swipe's failure message is stale the moment another swipe
-    // is attempted — leaving it up would misreport an already-resolved
-    // problem as still ongoing once this one succeeds.
     setError(null);
 
     swipeAction({ sessionId, participantId, itemId: item.id, direction, superLiked }).then(
       (result) => {
-        if (!result.ok) setError(result.error);
+        if (result.ok) return;
+        setError(result.error);
+        // The card already flew off optimistically; put it back on top once
+        // the advance below has run, so the unsaved decision can be retried
+        // instead of silently disappearing from this person's deck.
+        setTimeout(() => {
+          setQueue((prev) =>
+            prev && !prev.some((i) => i.id === item.id) ? [item, ...prev] : prev,
+          );
+        }, ADVANCE_DELAY_MS);
       },
     );
 
     setTimeout(() => {
-      setQueue((prev) => (prev ? prev.slice(1) : prev));
+      setQueue((prev) => prev?.filter((i) => i.id !== item.id) ?? prev);
       advancingRef.current = false;
     }, ADVANCE_DELAY_MS);
   }
@@ -139,11 +129,8 @@ export function SwipeDeck({
   }
 
   async function handleImDone() {
-    // Optimistic: the "You're done" screen appears immediately rather than
-    // waiting on the round trip. But that screen never renders `error` (it
-    // has nothing to retry from), so a failure has to roll finished back to
-    // false — otherwise this fails silently, leaving someone on a "done"
-    // screen the server never actually recorded, with no way back to retry.
+    // Optimistic, but rolled back on failure — the done screen has nothing
+    // to retry from, so a silent failure would strand someone there.
     setFinished(true);
     setError(null);
     const result = await markFinishedAction(participantId);
@@ -157,14 +144,20 @@ export function SwipeDeck({
     return <p className="text-foreground-muted">Loading your deck…</p>;
   }
 
-  const totalSwiped = progress.find((p) => p.participant_id === participantId)?.swipe_count ?? 0;
-  // PRD section 30: if everyone finishes before time (or an untimed
-  // session's pool) runs out, the group gets a choice rather than being
-  // yanked straight to results. Only the host acts on it (see
-  // SessionRoom's comment on why Reveal/End Now are creator-only).
-  const everyoneFinished = progress.length > 0 && progress.every((p) => p.finished_at);
+  const progressList = (
+    <SwipeProgress
+      progress={progress}
+      totalItems={items.length}
+      myParticipantId={participantId}
+      hostParticipantId={hostParticipantId}
+    />
+  );
 
   if (finished) {
+    // PRD section 30: if everyone finishes early, the host chooses whether
+    // to reveal now rather than the group being yanked straight to results.
+    const everyoneFinished = progress.length > 0 && progress.every((p) => p.finished_at);
+
     return (
       <div className="flex w-full flex-col items-center gap-6 text-center">
         <p className="text-lg font-semibold">You&apos;re done ✓</p>
@@ -173,17 +166,13 @@ export function SwipeDeck({
           isCreator ? (
             <div className="flex w-full flex-col gap-3">
               <p className="text-sm text-foreground-muted">Everyone&apos;s done! 🎉</p>
-              <button
-                type="button"
-                onClick={onCreatorReveal}
-                className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
-              >
+              <button type="button" onClick={onCreatorReveal} className={`w-full ${buttonPrimary}`}>
                 Reveal Results
               </button>
               <button
                 type="button"
                 onClick={() => setRevealPromptDismissed(true)}
-                className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+                className={`w-full ${buttonSecondary}`}
               >
                 Not Yet
               </button>
@@ -197,14 +186,7 @@ export function SwipeDeck({
           <p className="text-sm text-foreground-muted">Waiting for everyone else to finish…</p>
         )}
 
-        <div className="w-full max-h-48 overflow-y-auto overscroll-contain">
-          <SwipeProgress
-            progress={progress}
-            totalItems={items.length}
-            myParticipantId={participantId}
-            hostParticipantId={hostParticipantId}
-          />
-        </div>
+        <div className="w-full max-h-48 overflow-y-auto overscroll-contain">{progressList}</div>
       </div>
     );
   }
@@ -214,37 +196,26 @@ export function SwipeDeck({
       <div className="flex w-full flex-col items-center gap-6 text-center">
         <p className="text-lg font-semibold">You&apos;ve seen all {items.length}.</p>
         <div className="flex w-full flex-col gap-3">
-          <button
-            type="button"
-            onClick={handleImDone}
-            className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
-          >
+          <button type="button" onClick={handleImDone} className={`w-full ${buttonPrimary}`}>
             I&apos;m Done
           </button>
           <button
             type="button"
             onClick={handleShowMore}
             disabled={loadingMore}
-            className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97] disabled:opacity-50"
+            className={`w-full ${buttonSecondary}`}
           >
             {loadingMore ? "Loading…" : "Show Me 50 More"}
           </button>
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
-        <div className="w-full max-h-48 overflow-y-auto overscroll-contain">
-          <SwipeProgress
-            progress={progress}
-            totalItems={items.length}
-            myParticipantId={participantId}
-            hostParticipantId={hostParticipantId}
-          />
-        </div>
+        <div className="w-full max-h-48 overflow-y-auto overscroll-contain">{progressList}</div>
       </div>
     );
   }
 
-  const top = queue[0];
-  const next = queue[1];
+  const totalSwiped = progress.find((p) => p.participant_id === participantId)?.swipe_count ?? 0;
+  const [top, next] = queue;
 
   return (
     <div className="flex w-full flex-col items-center gap-4">
@@ -252,34 +223,19 @@ export function SwipeDeck({
         {totalSwiped}/{items.length}
       </p>
 
-      {/* Fixed height, never squeezed: the card is this screen's one
-          primary action (PRD's "one obvious primary action per screen"),
-          so it always stays fully visible. Only the progress list below —
-          secondary info — gives up space and scrolls internally when a
-          large group doesn't fit, rather than the whole screen scrolling
-          and pushing the card itself partway off-screen. */}
-      <div className="relative h-[60dvh] w-full max-w-sm shrink-0">
-        {next && (
-          <div className="pointer-events-none absolute inset-0 scale-95 translate-y-2 opacity-70">
-            {renderCard(category, next)}
-          </div>
-        )}
-        <div className="absolute inset-0" key={top.id}>
-          <DecisionCard onSwipe={(direction, superLiked) => handleSwipe(top, direction, superLiked)}>
-            {renderCard(category, top)}
-          </DecisionCard>
-        </div>
+      {/* Fixed height, never squeezed: the card is this screen's primary
+          action. Only the progress list below gives up space and scrolls. */}
+      <div className="h-[60dvh] w-full max-w-sm shrink-0" key={top.id}>
+        <DecisionCard
+          preview={next && renderCard(category, next)}
+          onSwipe={(direction, superLiked) => handleSwipe(top, direction, superLiked)}
+        >
+          {renderCard(category, top)}
+        </DecisionCard>
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <div className="w-full min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <SwipeProgress
-          progress={progress}
-          totalItems={items.length}
-          myParticipantId={participantId}
-          hostParticipantId={hostParticipantId}
-        />
-      </div>
+      <div className="w-full min-h-0 flex-1 overflow-y-auto overscroll-contain">{progressList}</div>
     </div>
   );
 }

@@ -1,28 +1,16 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import "server-only";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-export async function createClient() {
-  const cookieStore = await cookies();
+// Guests never sign in (PRD section 43), so there's no per-request auth
+// state to carry in cookies — one stateless anon client can serve every
+// request. Reads go through this so Row Level Security still applies.
+let anonClient: SupabaseClient | null = null;
 
-  return createServerClient(
+export function getSupabase(): SupabaseClient {
+  anonClient ??= createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // Called from a Server Component with no request context to write to —
-            // safe to ignore as long as middleware refreshes the session.
-          }
-        },
-      },
-    },
+    { auth: { persistSession: false, autoRefreshToken: false } },
   );
+  return anonClient;
 }

@@ -1,5 +1,7 @@
 "use server";
 
+import type { ActionResult } from "@/lib/action-result";
+import { isUuid } from "@/lib/validation";
 import {
   createSession,
   getParticipants,
@@ -10,24 +12,17 @@ import {
   type SessionCategory,
   type SessionRow,
 } from "@/services/sessions";
+import { isValidMovieFilter, type MovieFilter } from "@/services/movies/filters";
 import {
-  MOVIE_DISCOVER_SLUGS,
-  MOVIE_GENRE_SLUGS,
-  MOVIE_LANGUAGE_SLUGS,
-  type MovieFilter,
-} from "@/services/movies";
-import {
-  RESTAURANT_CUISINE_SLUGS,
-  RESTAURANT_DISTANCE_KM_OPTIONS,
-  RESTAURANT_PRICE_SLUGS,
+  RESTAURANT_CUISINES,
+  RESTAURANT_DISTANCES_KM,
+  RESTAURANT_PRICES,
+  isEmptyRestaurantFilter,
   type RestaurantFilter,
-} from "@/services/restaurants";
+} from "@/services/restaurants/filters";
 
-// Server Functions are reachable by direct POST request, not just from our
-// own UI (see Next.js docs on Server Actions), so every input is validated
-// here rather than trusted from the client — the same rule the create-page
-// form action already followed pre-Sprint 2.
-type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
+// Server Actions are reachable by direct POST request, not just from our
+// own UI, so every input is validated here rather than trusted.
 
 const FRIENDLY_ERRORS: Record<string, string> = {
   SESSION_NOT_FOUND: "We couldn't find that SyncUp. Check the code and try again.",
@@ -36,14 +31,15 @@ const FRIENDLY_ERRORS: Record<string, string> = {
   NOT_ENOUGH_PARTICIPANTS: "You need at least 2 people to start.",
   NOT_CREATOR: "Only the person who started this SyncUp can start it.",
   SESSION_ALREADY_STARTED: "This SyncUp has already started.",
+  NO_CANDIDATES:
+    "We couldn't find anything to swipe on. Try again, or start a new SyncUp with fewer filters.",
 };
 
 function toActionError(error: unknown): string {
   if (error instanceof Error && FRIENDLY_ERRORS[error.message]) {
     return FRIENDLY_ERRORS[error.message];
   }
-  // Anything not in FRIENDLY_ERRORS is a bug, not an expected condition
-  // (like NOT_CREATOR) — log it so it doesn't get silently swallowed.
+  // Anything not in FRIENDLY_ERRORS is a bug, not an expected condition.
   console.error("Unexpected session action error:", error);
   return "Something went wrong. Please try again.";
 }
@@ -63,52 +59,32 @@ function normalizeName(raw: unknown): string | null {
 
 const MAX_LOCATION_LABEL_LENGTH = 100;
 
-// Server Actions are reachable by direct POST (see the file-top comment),
-// so a client-submitted filter is validated against the exact same slugs
-// services/movies knows how to query for — never trusted as already being
-// one of them just because the shape looks right.
+// Rebuilt from the validated fields, so no extra client-sent keys get stored.
 function normalizeMovieFilter(raw: unknown): MovieFilter | null | "invalid" {
   if (raw === null || raw === undefined) return null;
-  if (typeof raw !== "object") return "invalid";
-  const { kind, value } = raw as { kind?: unknown; value?: unknown };
-  if (typeof value !== "string") return "invalid";
-  if (kind === "genre" && (MOVIE_GENRE_SLUGS as readonly string[]).includes(value)) {
-    return { kind: "genre", value } as MovieFilter;
-  }
-  if (kind === "discover" && (MOVIE_DISCOVER_SLUGS as readonly string[]).includes(value)) {
-    return { kind: "discover", value } as MovieFilter;
-  }
-  if (kind === "language" && (MOVIE_LANGUAGE_SLUGS as readonly string[]).includes(value)) {
-    return { kind: "language", value } as MovieFilter;
-  }
-  return "invalid";
+  if (!isValidMovieFilter(raw)) return "invalid";
+  return { kind: raw.kind, value: raw.value } as MovieFilter;
 }
 
-// Same reasoning as normalizeMovieFilter above, applied to a plain object of
-// independent fields instead of a tagged union — each field is validated
-// (and defaulted) on its own rather than requiring every field to be
-// present, since a client only ever sends the ones it actually set.
+// Each field is optional and validated on its own, since these are
+// independent axes rather than one tagged choice like MovieFilter.
+function isAllowed(value: unknown, allowed: readonly unknown[]): boolean {
+  return value === null || value === undefined || allowed.includes(value);
+}
+
+const CUISINE_VALUES = RESTAURANT_CUISINES.map((o) => o.value);
+const PRICE_VALUES = RESTAURANT_PRICES.map((o) => o.value);
+
 function normalizeRestaurantFilter(raw: unknown): RestaurantFilter | null | "invalid" {
   if (raw === null || raw === undefined) return null;
   if (typeof raw !== "object") return "invalid";
-  const { cuisine, price, openNow, distanceKm } = raw as {
-    cuisine?: unknown;
-    price?: unknown;
-    openNow?: unknown;
-    distanceKm?: unknown;
-  };
+  const { cuisine, price, openNow, distanceKm } = raw as Record<string, unknown>;
 
-  if (cuisine !== null && cuisine !== undefined && !(RESTAURANT_CUISINE_SLUGS as readonly unknown[]).includes(cuisine)) {
-    return "invalid";
-  }
-  if (price !== null && price !== undefined && !(RESTAURANT_PRICE_SLUGS as readonly unknown[]).includes(price)) {
-    return "invalid";
-  }
-  if (openNow !== undefined && typeof openNow !== "boolean") return "invalid";
   if (
-    distanceKm !== null &&
-    distanceKm !== undefined &&
-    !(RESTAURANT_DISTANCE_KM_OPTIONS as readonly unknown[]).includes(distanceKm)
+    !isAllowed(cuisine, CUISINE_VALUES) ||
+    !isAllowed(price, PRICE_VALUES) ||
+    !isAllowed(distanceKm, RESTAURANT_DISTANCES_KM) ||
+    (openNow !== undefined && typeof openNow !== "boolean")
   ) {
     return "invalid";
   }
@@ -117,14 +93,18 @@ function normalizeRestaurantFilter(raw: unknown): RestaurantFilter | null | "inv
     cuisine: (cuisine as RestaurantFilter["cuisine"]) ?? null,
     price: (price as RestaurantFilter["price"]) ?? null,
     openNow: openNow === true,
-    distanceKm: (distanceKm as number | null | undefined) ?? null,
+    distanceKm: (distanceKm as number | undefined) ?? null,
   };
-  // An all-defaults object behaves identically to null everywhere it's
-  // read (getRestaurantPool), so collapsing it here keeps "no filter"
-  // represented one way in the database, not two.
-  const isEmpty =
-    filter.cuisine === null && filter.price === null && !filter.openNow && filter.distanceKm === null;
-  return isEmpty ? null : filter;
+  // "No filter" is stored one way (null), never as an all-defaults object.
+  return isEmptyRestaurantFilter(filter) ? null : filter;
+}
+
+function isLatitude(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 90;
+}
+
+function isLongitude(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 180;
 }
 
 export async function createSessionAction(input: {
@@ -145,8 +125,7 @@ export async function createSessionAction(input: {
   if (
     !VALID_CATEGORIES.includes(category) ||
     !VALID_DURATIONS.includes(input.durationSeconds) ||
-    typeof input.creatorGuestId !== "string" ||
-    input.creatorGuestId.length === 0 ||
+    !isUuid(input.creatorGuestId) ||
     !displayName ||
     movieFilter === "invalid" ||
     restaurantFilter === "invalid"
@@ -155,19 +134,18 @@ export async function createSessionAction(input: {
   }
 
   // Location is EAT-only (PRD section 13) and one of two shapes: real
-  // coordinates from "Use my location," or free text from "Choose an
-  // area" — never both, and never either for WATCH.
-  const hasCoords =
-    typeof input.locationLat === "number" &&
-    Number.isFinite(input.locationLat) &&
-    typeof input.locationLng === "number" &&
-    Number.isFinite(input.locationLng);
+  // coordinates ("Use my location" or a picked suggestion), or free text
+  // ("Choose an area") — never both, and never either for WATCH.
+  const coords =
+    category === "EAT" && isLatitude(input.locationLat) && isLongitude(input.locationLng)
+      ? { lat: input.locationLat, lng: input.locationLng }
+      : null;
   const locationLabel =
-    typeof input.locationLabel === "string"
-      ? input.locationLabel.trim().slice(0, MAX_LOCATION_LABEL_LENGTH)
-      : "";
+    category === "EAT" && !coords && typeof input.locationLabel === "string"
+      ? input.locationLabel.trim().slice(0, MAX_LOCATION_LABEL_LENGTH) || null
+      : null;
 
-  if (category === "EAT" && !hasCoords && locationLabel.length === 0) {
+  if (category === "EAT" && !coords && !locationLabel) {
     return { ok: false, error: "Tell us where you want to eat." };
   }
 
@@ -177,10 +155,9 @@ export async function createSessionAction(input: {
       durationSeconds: input.durationSeconds === 0 ? null : input.durationSeconds,
       creatorGuestId: input.creatorGuestId,
       displayName,
-      locationLat: category === "EAT" && hasCoords ? input.locationLat : null,
-      locationLng: category === "EAT" && hasCoords ? input.locationLng : null,
-      locationLabel:
-        category === "EAT" && !hasCoords && locationLabel.length > 0 ? locationLabel : null,
+      locationLat: coords?.lat ?? null,
+      locationLng: coords?.lng ?? null,
+      locationLabel,
       movieFilter: category === "WATCH" ? movieFilter : null,
       restaurantFilter: category === "EAT" ? restaurantFilter : null,
     });
@@ -190,41 +167,25 @@ export async function createSessionAction(input: {
   }
 }
 
-// Backstop for the waiting room's Realtime subscription (SessionRoom):
-// Supabase's WebSocket occasionally drops or delays an event, which was
-// leaving a joiner invisible to the rest of the group until someone
-// happened to reload — polling this every few seconds means a missed
-// Realtime event self-heals within one poll interval instead of needing a
-// manual refresh, same reconciliation pattern SwipeDeck already uses for
-// progress.
+// Backstops for SessionRoom's Realtime subscription: a dropped or delayed
+// WebSocket event would otherwise leave a joiner invisible, or a screen
+// stuck on the waiting room after the session started, until a reload.
 export async function getParticipantsAction(
   sessionId: string,
 ): Promise<ActionResult<ParticipantRow[]>> {
-  if (typeof sessionId !== "string") {
-    return { ok: false, error: "Invalid request." };
-  }
+  if (!isUuid(sessionId)) return { ok: false, error: "Invalid request." };
   try {
-    const data = await getParticipants(sessionId);
-    return { ok: true, data };
+    return { ok: true, data: await getParticipants(sessionId) };
   } catch (error) {
     console.error("getParticipantsAction failed:", error);
     return { ok: false, error: "Couldn't refresh participants." };
   }
 }
 
-// Backstop for the same Realtime subscription's other job (SessionRoom
-// also relays "UPDATE" events on the sessions row itself, not just
-// participant joins) — a dropped/delayed event here was leaving a session
-// stuck showing the waiting room after someone else started it, or the
-// swipe deck after someone else ended it, until a manual refresh. Same
-// self-healing poll pattern as getParticipantsAction above.
 export async function getSessionAction(sessionId: string): Promise<ActionResult<SessionRow | null>> {
-  if (typeof sessionId !== "string") {
-    return { ok: false, error: "Invalid request." };
-  }
+  if (!isUuid(sessionId)) return { ok: false, error: "Invalid request." };
   try {
-    const data = await getSessionById(sessionId);
-    return { ok: true, data };
+    return { ok: true, data: await getSessionById(sessionId) };
   } catch (error) {
     console.error("getSessionAction failed:", error);
     return { ok: false, error: "Couldn't refresh session status." };
@@ -237,18 +198,12 @@ export async function joinSessionAction(input: {
   displayName: string;
 }): Promise<ActionResult<ParticipantRow>> {
   const displayName = normalizeName(input.displayName);
-  if (
-    typeof input.sessionId !== "string" ||
-    typeof input.guestId !== "string" ||
-    input.guestId.length === 0 ||
-    !displayName
-  ) {
+  if (!isUuid(input.sessionId) || !isUuid(input.guestId) || !displayName) {
     return { ok: false, error: "Enter your name to join." };
   }
 
   try {
-    const data = await joinSession(input.sessionId, input.guestId, displayName);
-    return { ok: true, data };
+    return { ok: true, data: await joinSession(input.sessionId, input.guestId, displayName) };
   } catch (error) {
     return { ok: false, error: toActionError(error) };
   }
@@ -258,13 +213,12 @@ export async function startSessionAction(input: {
   sessionId: string;
   guestId: string;
 }): Promise<ActionResult<SessionRow>> {
-  if (typeof input.sessionId !== "string" || typeof input.guestId !== "string") {
+  if (!isUuid(input.sessionId) || !isUuid(input.guestId)) {
     return { ok: false, error: "Something went wrong. Please try again." };
   }
 
   try {
-    const data = await startSession(input.sessionId, input.guestId);
-    return { ok: true, data };
+    return { ok: true, data: await startSession(input.sessionId, input.guestId) };
   } catch (error) {
     return { ok: false, error: toActionError(error) };
   }

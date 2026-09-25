@@ -1,14 +1,14 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { getSupabase } from "@/lib/supabase/server";
+import { getServiceSupabase } from "@/lib/supabase/service";
 import { getMoviePool } from "@/services/movies";
 import { getRestaurantPool } from "@/services/restaurants";
-import { getSessionById, type SessionCategory, type SessionRow } from "@/services/sessions";
+import type { SessionCategory, SessionRow } from "@/services/sessions";
 
-// The category-agnostic middle layer CLAUDE.md's architecture rule asks for:
+// The category-agnostic middle layer (CLAUDE.md's architecture rule):
 // session/matching code calls this, never a provider directly, and this is
-// the only place that switches on `category` to pick a provider.
-async function getCandidatesFromProvider(session: SessionRow, batchNumber: number) {
+// the only place that switches on `category` to pick one.
+function getCandidatesFromProvider(session: SessionRow, batchNumber: number) {
   switch (session.category) {
     case "WATCH":
       return getMoviePool(batchNumber, session.movie_filter);
@@ -40,65 +40,59 @@ export interface SessionItemRow {
   batch_number: number;
 }
 
-// Writes candidates into `items` (upsert, shared across all sessions that
-// happen to pool the same movie) and `session_items` (this session's actual
-// pool, in swipe order). Both tables have no anon insert policy (migration
-// 0001) — service role bypasses that intentionally, since candidate content
-// is trusted server-written data, not user input.
+// Writes candidates into `items` (shared across sessions that pool the same
+// movie/restaurant) and `session_items` (this session's pool, in swipe
+// order). Returns how many new items the session gained.
 export async function generateCandidatePool(
-  sessionId: string,
+  session: SessionRow,
   batchNumber: number,
 ): Promise<number> {
-  const session = await getSessionById(sessionId);
-  if (!session) throw new Error("SESSION_NOT_FOUND");
+  const db = getServiceSupabase();
 
-  const candidates = await getCandidatesFromProvider(session, batchNumber);
+  const [candidates, existingResult] = await Promise.all([
+    getCandidatesFromProvider(session, batchNumber),
+    db.from("session_items").select("item_id, position").eq("session_id", session.id),
+  ]);
+  if (existingResult.error) throw existingResult.error;
   if (candidates.length === 0) return 0;
 
-  const service = createServiceClient();
-
-  const { data: upsertedItems, error: upsertError } = await service
+  const { data: upsertedItems, error: upsertError } = await db
     .from("items")
     .upsert(
       candidates.map((c) => ({ category: session.category, ...c })),
-      { onConflict: "category,source,external_id", ignoreDuplicates: false },
+      { onConflict: "category,source,external_id" },
     )
-    .select("id, external_id");
-
+    .select("id");
   if (upsertError) throw upsertError;
 
-  const { data: existing, error: existingError } = await service
-    .from("session_items")
-    .select("item_id, position")
-    .eq("session_id", sessionId);
-
-  if (existingError) throw existingError;
-
-  const alreadyInSession = new Set((existing ?? []).map((row) => row.item_id));
-  let nextPosition = (existing ?? []).reduce((max, row) => Math.max(max, row.position), -1) + 1;
+  const existing = existingResult.data ?? [];
+  const alreadyInSession = new Set(existing.map((row) => row.item_id));
+  let nextPosition = existing.reduce((max, row) => Math.max(max, row.position), -1) + 1;
 
   const newRows = (upsertedItems ?? [])
     .filter((item) => !alreadyInSession.has(item.id))
     .map((item) => ({
-      session_id: sessionId,
+      session_id: session.id,
       item_id: item.id,
       position: nextPosition++,
       batch_number: batchNumber,
     }));
-
   if (newRows.length === 0) return 0;
 
-  const { error: insertError } = await service.from("session_items").insert(newRows);
+  // Two participants reaching the end of the deck together can both request
+  // the same batch — ignoring duplicates lets the slower one succeed
+  // quietly instead of failing on the unique (session_id, item_id) index.
+  const { data: inserted, error: insertError } = await db
+    .from("session_items")
+    .upsert(newRows, { onConflict: "session_id,item_id", ignoreDuplicates: true })
+    .select("item_id");
   if (insertError) throw insertError;
 
-  return newRows.length;
+  return inserted?.length ?? 0;
 }
 
-// items/session_items are publicly readable (migration 0001), so this uses
-// the ordinary anon-key client — no need for the service role just to read.
 export async function getSessionItems(sessionId: string): Promise<SessionItemRow[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("session_items")
     .select("position, batch_number, item:items(*)")
     .eq("session_id", sessionId)
@@ -109,8 +103,7 @@ export async function getSessionItems(sessionId: string): Promise<SessionItemRow
 }
 
 export async function getMaxBatchNumber(sessionId: string): Promise<number> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("session_items")
     .select("batch_number")
     .eq("session_id", sessionId)

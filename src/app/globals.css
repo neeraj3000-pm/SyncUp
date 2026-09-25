@@ -37,21 +37,13 @@
   --radius-pill: 999px;
 
   /* One shared elevation for every flat, bordered surface (cards, list
-     rows, inputs, the outline/secondary button variant) — previously
-     border-only with zero shadow, which is a large share of why the app
-     read as flat/plain next to the primary buttons and MovieCard/
-     RestaurantCard, which already had shadow-xl. Warm ink-navy tint, not
-     a generic gray, to match the rest of this palette rather than
-     looking like a default framework shadow. */
+     rows, inputs, secondary buttons). Warm ink-navy tint rather than a
+     generic gray, to match the palette. */
   --shadow-card:
     0 1px 2px rgba(43, 45, 66, 0.04), 0 6px 16px -4px rgba(43, 45, 66, 0.08);
-  /* A lighter elevation for small option chips packed tightly in a wrapped
-     grid (MovieFilterPicker/RestaurantFilterPicker's per-tab rows) —
-     shadow-card's 6-16px spread was tuned for standalone cards with real
-     space around them; on chips a couple of pixels apart it stacked
-     between rows into one solid shadowed band, reading as a boxed panel
-     instead of each chip floating independently. Single small offset, no
-     spread, so neighbors don't visually merge. */
+  /* Lighter elevation for small chips packed tightly in a wrapped grid —
+     shadow-card's larger spread stacks between rows into one shadowed
+     band, so chips read as boxed in rather than floating. */
   --shadow-chip: 0 1px 2px rgba(43, 45, 66, 0.06);
 }
 
@@ -139,17 +131,12 @@ html {
 
 html,
 body {
-  /* Without this, scrolling past the top of the page triggers Android's
-     pull-to-refresh or iOS's whole-page rubber-band — fine on a plain
-     document, wrong for an app with its own scroll containers (the swipe
-     deck, a sheet). Inner scrollables opt back into their own contained
-     bounce with overscroll-behavior: contain (see DetailSheet). This pairs
-     with layout.tsx's h-dvh + overflow-hidden on body: the document itself
-     never scrolls at all, every screen fits (or gets its own explicit
-     internal scroll region) within the visible viewport — the fixed,
-     app-like shell this app was missing, and the direct fix for the
-     ambiguous page-scroll-vs-card-swipe conflict flagged in Sprint 5
-     testing. */
+  /* Without this, scrolling past the top triggers Android's pull-to-refresh
+     or iOS's whole-page rubber-band — wrong for an app with its own scroll
+     containers. Inner scrollables opt back in with overscroll-behavior:
+     contain. Pairs with layout.tsx's h-dvh + overflow-hidden body: the
+     document itself never scrolls, so page scroll can't fight the card
+     swipe. */
   overscroll-behavior: none;
   /* overflow: hidden alone isn't enough on iOS Safari specifically: it
      still leaves the document a (barely) scrollable box, so a horizontal

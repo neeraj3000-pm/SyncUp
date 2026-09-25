@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CardFanHero } from "@/components/CardFanHero";
+import { buttonPrimary } from "@/lib/ui";
 
 export default function JoinLandingPage() {
   const [code, setCode] = useState("");
@@ -33,11 +34,8 @@ export default function JoinLandingPage() {
       {/* min-h-0 + flex-1: fills the rest of main's height itself, so the
           spacer right below has real leftover space to absorb. */}
       <div className="relative flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
-        {/* A plain zero-basis spacer — not flex-1 on CardFanHero itself,
-            which turned out not to reliably shrink back down under real
-            overflow (see that component's own comment). This shrinks to
-            true zero on a short viewport instead of pushing content past
-            the fold. */}
+        {/* Absorbs spare height, shrinking to zero on short screens (see
+            CardFanHero). */}
         <div className="min-h-0 flex-1" />
         <CardFanHero />
         <div className="flex flex-col gap-2">
@@ -63,7 +61,7 @@ export default function JoinLandingPage() {
           <button
             type="submit"
             disabled={!code.trim()}
-            className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97] disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
+            className={`w-full ${buttonPrimary}`}
           >
             Continue
           </button>

@@ -1,10 +1,15 @@
 import "server-only";
+import { PLACES_BASE, placesHeaders } from "@/services/google-places";
 import type { NormalizedItem } from "@/services/movies";
+import type {
+  RestaurantCuisineSlug,
+  RestaurantFilter,
+  RestaurantPriceSlug,
+} from "@/services/restaurants/filters";
 
 // PRD section 39: restaurant content flows through a provider abstraction,
 // never called directly from the UI. Google Places API (New) is the
 // provider (CLAUDE.md — chosen during scoping).
-const PLACES_BASE = "https://places.googleapis.com/v1";
 
 // Rating/price/opening-hours fields put every search call under Places'
 // "Enterprise" SKU tier rather than the cheaper "Essentials" one — worth
@@ -22,10 +27,6 @@ const SEARCH_FIELD_MASK = [
   "places.rating",
   "places.priceLevel",
 ].join(",");
-
-function apiKey(): string {
-  return process.env.GOOGLE_PLACES_API_KEY ?? "";
-}
 
 interface PlacesLatLng {
   latitude: number;
@@ -51,11 +52,7 @@ interface PlacesSearchResponse {
 async function placesSearch<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const res = await fetch(`${PLACES_BASE}${path}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey(),
-      "X-Goog-FieldMask": SEARCH_FIELD_MASK,
-    },
+    headers: placesHeaders(SEARCH_FIELD_MASK),
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -74,14 +71,14 @@ async function resolvePhotoUrl(photoName: string): Promise<string | null> {
   try {
     const res = await fetch(
       `${PLACES_BASE}/${photoName}/media?maxWidthPx=800&skipHttpRedirect=true`,
-      { headers: { "X-Goog-Api-Key": apiKey() } },
+      { headers: placesHeaders() },
     );
     if (!res.ok) return null;
     const data = (await res.json()) as { photoUri?: string };
     return data.photoUri ?? null;
   } catch {
     // A missing/broken photo shouldn't take down the whole pool — the card
-    // already has a "No poster available" fallback for a null image_url.
+    // already has a fallback for a null image_url.
     return null;
   }
 }
@@ -93,66 +90,21 @@ const PRICE_LABELS: Record<string, string> = {
   PRICE_LEVEL_VERY_EXPENSIVE: "₹₹₹₹",
 };
 
-// PRD section 13's "Step 2 — narrow the pool." Unlike MovieFilter (one of
-// three mutually-exclusive query strategies), these are independent axes a
-// person can combine freely — "Italian, Budget, Open Now" is a perfectly
-// normal thing to want all at once — so this is a plain object of optional
-// fields rather than a tagged union. Exported slug lists let the UI and
-// services/sessions/actions.ts's validation share one source of truth, same
-// pattern as MOVIE_GENRE_SLUGS etc.
-export type RestaurantCuisineSlug =
-  | "indian"
-  | "chinese"
-  | "italian"
-  | "cafe"
-  | "fast_food"
-  | "bakery";
-export type RestaurantPriceSlug = "budget" | "mid_range" | "fine_dining";
-
-export interface RestaurantFilter {
-  cuisine: RestaurantCuisineSlug | null;
-  price: RestaurantPriceSlug | null;
-  openNow: boolean;
-  // Only meaningful with coordinate-based location ("Use my location" or a
-  // picked suggestion) — a typed free-text area has no center to measure
-  // from, so RestaurantFilterPicker hides this tab in that case and
-  // getRestaurantPool's text-search path below simply never reads it.
-  distanceKm: number | null;
-}
-
-export const RESTAURANT_CUISINE_SLUGS: readonly RestaurantCuisineSlug[] = [
-  "indian",
-  "chinese",
-  "italian",
-  "cafe",
-  "fast_food",
-  "bakery",
-];
-export const RESTAURANT_PRICE_SLUGS: readonly RestaurantPriceSlug[] = [
-  "budget",
-  "mid_range",
-  "fine_dining",
-];
-// km — the choices offered on the Distance tab; getRestaurantPool below
-// uses whichever one's picked as the Nearby Search base radius.
-export const RESTAURANT_DISTANCE_KM_OPTIONS: readonly number[] = [2, 5, 10, 20];
-
-// Places (New) type taxonomy has no India-specific "North/South Indian"
-// split — "indian_restaurant" is the closest real type, and the rest are
-// the cuisines actually common in Indian food-delivery/dining-out apps.
-const CUISINE_PLACE_TYPES: Record<RestaurantCuisineSlug, string> = {
-  indian: "indian_restaurant",
-  chinese: "chinese_restaurant",
-  italian: "italian_restaurant",
-  cafe: "cafe",
-  fast_food: "fast_food_restaurant",
-  bakery: "bakery",
+// Matched against a place's PRIMARY type — matching any of its types let a
+// hotel with a café inside show up under "Cafe". A few close neighbors per
+// cuisine keep that stricter match from thinning results out. Places has no
+// North/South Indian split, so "indian_restaurant" covers both.
+const CUISINE_PLACE_TYPES: Record<RestaurantCuisineSlug, readonly string[]> = {
+  indian: ["indian_restaurant"],
+  chinese: ["chinese_restaurant"],
+  italian: ["italian_restaurant", "pizza_restaurant"],
+  cafe: ["cafe", "coffee_shop"],
+  fast_food: ["fast_food_restaurant", "hamburger_restaurant", "sandwich_shop"],
+  bakery: ["bakery", "dessert_shop", "dessert_restaurant", "ice_cream_shop"],
 };
 
-// Places' priceLevel enum has 4 steps; MVP trims that to 3 buckets for the
-// same reason the movie filters got trimmed from 19 options to fewer — a
-// person picking "how expensive" rarely means to distinguish "Expensive"
-// from "Very Expensive," so Fine Dining covers both.
+// Places' priceLevel enum has 4 steps; the picker offers 3 buckets, since
+// "Expensive" vs. "Very Expensive" is rarely a distinction anyone means.
 const PRICE_SLUG_LEVELS: Record<RestaurantPriceSlug, readonly string[]> = {
   budget: ["PRICE_LEVEL_INEXPENSIVE"],
   mid_range: ["PRICE_LEVEL_MODERATE"],
@@ -239,11 +191,8 @@ export interface RestaurantDetail {
 const MAX_DETAIL_PHOTOS = 5;
 
 export async function getRestaurantDetail(externalId: string): Promise<RestaurantDetail> {
-  const res = await fetch(`${PLACES_BASE}/places/${externalId}`, {
-    headers: {
-      "X-Goog-Api-Key": apiKey(),
-      "X-Goog-FieldMask": DETAIL_FIELD_MASK,
-    },
+  const res = await fetch(`${PLACES_BASE}/places/${encodeURIComponent(externalId)}`, {
+    headers: placesHeaders(DETAIL_FIELD_MASK),
   });
   if (!res.ok) {
     throw new Error(`Places detail request failed: ${res.status} ${await res.text()}`);
@@ -316,7 +265,7 @@ export async function getRestaurantPool(
   filter: RestaurantFilter | null = null,
 ): Promise<NormalizedItem[]> {
   const isCoords = "lat" in location;
-  const cuisineType = filter?.cuisine ? CUISINE_PLACE_TYPES[filter.cuisine] : null;
+  const cuisineTypes = filter?.cuisine ? CUISINE_PLACE_TYPES[filter.cuisine] : null;
   // The Distance tab's own choice takes priority as the starting radius;
   // "Show Me More" batches still widen it the same way as before, just from
   // whatever base the person actually asked for instead of always 3km.
@@ -324,7 +273,11 @@ export async function getRestaurantPool(
 
   const response = isCoords
     ? await placesSearch<PlacesSearchResponse>("/places:searchNearby", {
-        includedTypes: [cuisineType ?? "restaurant"],
+        // Unfiltered, any place of type "restaurant" qualifies, which also
+        // covers every specific cuisine type.
+        ...(cuisineTypes
+          ? { includedPrimaryTypes: cuisineTypes }
+          : { includedTypes: ["restaurant"] }),
         maxResultCount: RESULTS_PER_BATCH,
         locationRestriction: {
           circle: {
@@ -337,7 +290,8 @@ export async function getRestaurantPool(
     : await placesSearch<PlacesSearchResponse>("/places:searchText", {
         textQuery: `${TEXT_QUERY_VARIANTS[(batchNumber - 1) % TEXT_QUERY_VARIANTS.length]} in ${location.label}`,
         pageSize: RESULTS_PER_BATCH,
-        ...(cuisineType && { includedType: cuisineType }),
+        // Text Search takes a single type; strict filtering drops loose matches.
+        ...(cuisineTypes && { includedType: cuisineTypes[0], strictTypeFiltering: true }),
       });
 
   const places = (response.places ?? []).filter(
