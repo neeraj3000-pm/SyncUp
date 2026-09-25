@@ -15,14 +15,21 @@ export default function JoinLandingPage() {
   }
 
   return (
-    <main className="relative mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-center gap-8 overflow-y-auto overscroll-contain px-6 py-12 text-center">
+    <main className="relative mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-end gap-8 overflow-y-auto overscroll-contain px-6 pb-28 pt-12 text-center">
       {/* Same atmospheric glow as the landing page (same reasoning: fills
-          the empty space a justify-center column leaves on a tall phone
+          the empty space this column otherwise leaves on a tall phone
           screen) — no card illustration here, though, since this screen's
-          whole job is "enter code, go fast," not a moment to linger on. */}
+          whole job is "enter code, go fast," not a moment to linger on.
+          justify-end (below) puts the code input and Continue button in
+          the bottom two-thirds of the screen, easier to reach one-handed
+          than dead center — the glow follows it down rather than sitting
+          where the content used to be. pb-28, not the usual pb-12: leaves
+          clearance below the button for ThemeToggle's fixed bottom-right
+          circle, which otherwise sits close enough to overlap it now that
+          the button itself has moved this much lower. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.14] blur-[80px]"
+        className="pointer-events-none absolute left-1/2 top-[50vh] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.14] blur-[80px]"
       />
 
       <div className="relative flex flex-col gap-2">

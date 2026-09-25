@@ -22,7 +22,16 @@ export default async function SessionPage({
   const serverNow = new Date().toISOString();
 
   return (
-    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-center gap-8 overflow-y-auto overscroll-contain px-6 py-12">
+    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-end gap-8 overflow-y-auto overscroll-contain px-6 pb-28 pt-12">
+      {/* justify-end: the WAITING-room content (code box, participant
+          list, Start button) has no flex-1 of its own, so it settles in
+          the bottom two-thirds of the screen instead of dead center —
+          easier to reach one-handed. The ACTIVE swipe deck's own root div
+          IS flex-1 (SessionRoom), so it still fills this whole area
+          regardless of this justify-content, same as before. pb-28: room
+          below the Start button for ThemeToggle's fixed bottom-right
+          circle, which would otherwise overlap it now that it sits this
+          much lower. */}
       <SessionRoom
         session={session}
         participants={participants}
