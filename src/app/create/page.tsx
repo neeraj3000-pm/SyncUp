@@ -12,6 +12,8 @@ import type { LocationSuggestion } from "@/services/location";
 import { EatIcon, WatchIcon } from "@/components/icons/CategoryIcons";
 import { MovieFilterPicker } from "@/components/MovieFilterPicker";
 import type { MovieFilter } from "@/services/movies";
+import { RestaurantFilterPicker } from "@/components/RestaurantFilterPicker";
+import type { RestaurantFilter } from "@/services/restaurants";
 
 const CATEGORIES = [
   { value: "WATCH", Icon: WatchIcon, label: "Watch", helper: "Movies and more" },
@@ -43,6 +45,7 @@ function CreateForm() {
 
   const [category, setCategory] = useState<"WATCH" | "EAT">(initialCategory);
   const [movieFilter, setMovieFilter] = useState<MovieFilter | null>(null);
+  const [restaurantFilter, setRestaurantFilter] = useState<RestaurantFilter | null>(null);
   const [duration, setDuration] = useState(300);
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
@@ -165,6 +168,7 @@ function CreateForm() {
       locationLng: coords?.lng ?? null,
       locationLabel: areaText.trim() || null,
       movieFilter: category === "WATCH" ? movieFilter : null,
+      restaurantFilter: category === "EAT" ? restaurantFilter : null,
     });
 
     if (!result.ok) {
@@ -309,6 +313,17 @@ function CreateForm() {
             <p className="text-xs text-foreground-muted">Getting that location…</p>
           )}
           {suggestError && <p className="text-sm text-red-500">{suggestError}</p>}
+        </section>
+      )}
+
+      {category === "EAT" && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-sm font-semibold text-foreground-muted">What do you want to eat?</h2>
+          <RestaurantFilterPicker
+            value={restaurantFilter}
+            onChange={setRestaurantFilter}
+            hasCoords={coords !== null}
+          />
         </section>
       )}
 

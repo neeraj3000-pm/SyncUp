@@ -93,6 +93,72 @@ const PRICE_LABELS: Record<string, string> = {
   PRICE_LEVEL_VERY_EXPENSIVE: "₹₹₹₹",
 };
 
+// PRD section 13's "Step 2 — narrow the pool." Unlike MovieFilter (one of
+// three mutually-exclusive query strategies), these are independent axes a
+// person can combine freely — "Italian, Budget, Open Now" is a perfectly
+// normal thing to want all at once — so this is a plain object of optional
+// fields rather than a tagged union. Exported slug lists let the UI and
+// services/sessions/actions.ts's validation share one source of truth, same
+// pattern as MOVIE_GENRE_SLUGS etc.
+export type RestaurantCuisineSlug =
+  | "indian"
+  | "chinese"
+  | "italian"
+  | "cafe"
+  | "fast_food"
+  | "bakery";
+export type RestaurantPriceSlug = "budget" | "mid_range" | "fine_dining";
+
+export interface RestaurantFilter {
+  cuisine: RestaurantCuisineSlug | null;
+  price: RestaurantPriceSlug | null;
+  openNow: boolean;
+  // Only meaningful with coordinate-based location ("Use my location" or a
+  // picked suggestion) — a typed free-text area has no center to measure
+  // from, so RestaurantFilterPicker hides this tab in that case and
+  // getRestaurantPool's text-search path below simply never reads it.
+  distanceKm: number | null;
+}
+
+export const RESTAURANT_CUISINE_SLUGS: readonly RestaurantCuisineSlug[] = [
+  "indian",
+  "chinese",
+  "italian",
+  "cafe",
+  "fast_food",
+  "bakery",
+];
+export const RESTAURANT_PRICE_SLUGS: readonly RestaurantPriceSlug[] = [
+  "budget",
+  "mid_range",
+  "fine_dining",
+];
+// km — the choices offered on the Distance tab; getRestaurantPool below
+// uses whichever one's picked as the Nearby Search base radius.
+export const RESTAURANT_DISTANCE_KM_OPTIONS: readonly number[] = [2, 5, 10, 20];
+
+// Places (New) type taxonomy has no India-specific "North/South Indian"
+// split — "indian_restaurant" is the closest real type, and the rest are
+// the cuisines actually common in Indian food-delivery/dining-out apps.
+const CUISINE_PLACE_TYPES: Record<RestaurantCuisineSlug, string> = {
+  indian: "indian_restaurant",
+  chinese: "chinese_restaurant",
+  italian: "italian_restaurant",
+  cafe: "cafe",
+  fast_food: "fast_food_restaurant",
+  bakery: "bakery",
+};
+
+// Places' priceLevel enum has 4 steps; MVP trims that to 3 buckets for the
+// same reason the movie filters got trimmed from 19 options to fewer — a
+// person picking "how expensive" rarely means to distinguish "Expensive"
+// from "Very Expensive," so Fine Dining covers both.
+const PRICE_SLUG_LEVELS: Record<RestaurantPriceSlug, readonly string[]> = {
+  budget: ["PRICE_LEVEL_INEXPENSIVE"],
+  mid_range: ["PRICE_LEVEL_MODERATE"],
+  fine_dining: ["PRICE_LEVEL_EXPENSIVE", "PRICE_LEVEL_VERY_EXPENSIVE"],
+};
+
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -210,8 +276,24 @@ export type RestaurantLocation = { lat: number; lng: number } | { label: string 
 // call — see Google's docs), so later batches ("Show Me More") widen the
 // search radius instead of paging, trading a bit of precision for genuinely
 // new results. Capped at Places' own 50km radius ceiling.
-const BASE_RADIUS_M = 3000;
+const DEFAULT_RADIUS_M = 3000;
 const MAX_RADIUS_M = 50000;
+
+// Nearby Search (New)'s request body has no priceLevels/openNow fields at
+// all (only includedTypes/excludedTypes narrow what it searches for) — so
+// cuisine goes into the request itself, but price and open-now are applied
+// here, after the fetch, against fields the field mask already pulls back
+// for the card (rating/priceLevel/openNow). Text Search (New) does support
+// both server-side, but filtering post-fetch for it too keeps one code path
+// instead of two, and the result is identical either way.
+function matchesPriceAndOpenNow(place: PlacesResult, filter: RestaurantFilter | null): boolean {
+  if (!filter) return true;
+  if (filter.price && !PRICE_SLUG_LEVELS[filter.price].includes(place.priceLevel ?? "")) {
+    return false;
+  }
+  if (filter.openNow && place.currentOpeningHours?.openNow !== true) return false;
+  return true;
+}
 
 // Text Search (New) does support real pagination via pageToken, but that
 // token would need to be persisted across separate server-action calls
@@ -231,17 +313,23 @@ const RESULTS_PER_BATCH = 20;
 export async function getRestaurantPool(
   location: RestaurantLocation,
   batchNumber: number,
+  filter: RestaurantFilter | null = null,
 ): Promise<NormalizedItem[]> {
   const isCoords = "lat" in location;
+  const cuisineType = filter?.cuisine ? CUISINE_PLACE_TYPES[filter.cuisine] : null;
+  // The Distance tab's own choice takes priority as the starting radius;
+  // "Show Me More" batches still widen it the same way as before, just from
+  // whatever base the person actually asked for instead of always 3km.
+  const baseRadiusM = filter?.distanceKm ? filter.distanceKm * 1000 : DEFAULT_RADIUS_M;
 
   const response = isCoords
     ? await placesSearch<PlacesSearchResponse>("/places:searchNearby", {
-        includedTypes: ["restaurant"],
+        includedTypes: [cuisineType ?? "restaurant"],
         maxResultCount: RESULTS_PER_BATCH,
         locationRestriction: {
           circle: {
             center: { latitude: location.lat, longitude: location.lng },
-            radius: Math.min(BASE_RADIUS_M * batchNumber, MAX_RADIUS_M),
+            radius: Math.min(baseRadiusM * batchNumber, MAX_RADIUS_M),
           },
         },
         rankPreference: "POPULARITY",
@@ -249,9 +337,12 @@ export async function getRestaurantPool(
     : await placesSearch<PlacesSearchResponse>("/places:searchText", {
         textQuery: `${TEXT_QUERY_VARIANTS[(batchNumber - 1) % TEXT_QUERY_VARIANTS.length]} in ${location.label}`,
         pageSize: RESULTS_PER_BATCH,
+        ...(cuisineType && { includedType: cuisineType }),
       });
 
-  const places = (response.places ?? []).filter((p) => p.displayName?.text);
+  const places = (response.places ?? []).filter(
+    (p) => p.displayName?.text && matchesPriceAndOpenNow(p, filter),
+  );
 
   const imageUrls = await Promise.all(
     places.map((p) => (p.photos?.[0] ? resolvePhotoUrl(p.photos[0].name) : null)),

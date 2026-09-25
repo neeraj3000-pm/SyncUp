@@ -16,6 +16,12 @@ import {
   MOVIE_LANGUAGE_SLUGS,
   type MovieFilter,
 } from "@/services/movies";
+import {
+  RESTAURANT_CUISINE_SLUGS,
+  RESTAURANT_DISTANCE_KM_OPTIONS,
+  RESTAURANT_PRICE_SLUGS,
+  type RestaurantFilter,
+} from "@/services/restaurants";
 
 // Server Functions are reachable by direct POST request, not just from our
 // own UI (see Next.js docs on Server Actions), so every input is validated
@@ -78,6 +84,49 @@ function normalizeMovieFilter(raw: unknown): MovieFilter | null | "invalid" {
   return "invalid";
 }
 
+// Same reasoning as normalizeMovieFilter above, applied to a plain object of
+// independent fields instead of a tagged union — each field is validated
+// (and defaulted) on its own rather than requiring every field to be
+// present, since a client only ever sends the ones it actually set.
+function normalizeRestaurantFilter(raw: unknown): RestaurantFilter | null | "invalid" {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== "object") return "invalid";
+  const { cuisine, price, openNow, distanceKm } = raw as {
+    cuisine?: unknown;
+    price?: unknown;
+    openNow?: unknown;
+    distanceKm?: unknown;
+  };
+
+  if (cuisine !== null && cuisine !== undefined && !(RESTAURANT_CUISINE_SLUGS as readonly unknown[]).includes(cuisine)) {
+    return "invalid";
+  }
+  if (price !== null && price !== undefined && !(RESTAURANT_PRICE_SLUGS as readonly unknown[]).includes(price)) {
+    return "invalid";
+  }
+  if (openNow !== undefined && typeof openNow !== "boolean") return "invalid";
+  if (
+    distanceKm !== null &&
+    distanceKm !== undefined &&
+    !(RESTAURANT_DISTANCE_KM_OPTIONS as readonly unknown[]).includes(distanceKm)
+  ) {
+    return "invalid";
+  }
+
+  const filter: RestaurantFilter = {
+    cuisine: (cuisine as RestaurantFilter["cuisine"]) ?? null,
+    price: (price as RestaurantFilter["price"]) ?? null,
+    openNow: openNow === true,
+    distanceKm: (distanceKm as number | null | undefined) ?? null,
+  };
+  // An all-defaults object behaves identically to null everywhere it's
+  // read (getRestaurantPool), so collapsing it here keeps "no filter"
+  // represented one way in the database, not two.
+  const isEmpty =
+    filter.cuisine === null && filter.price === null && !filter.openNow && filter.distanceKm === null;
+  return isEmpty ? null : filter;
+}
+
 export async function createSessionAction(input: {
   category: string;
   durationSeconds: number;
@@ -87,17 +136,20 @@ export async function createSessionAction(input: {
   locationLng?: number | null;
   locationLabel?: string | null;
   movieFilter?: unknown;
+  restaurantFilter?: unknown;
 }): Promise<ActionResult<{ session: SessionRow; participant: ParticipantRow }>> {
   const displayName = normalizeName(input.displayName);
   const category = input.category as SessionCategory;
   const movieFilter = normalizeMovieFilter(input.movieFilter);
+  const restaurantFilter = normalizeRestaurantFilter(input.restaurantFilter);
   if (
     !VALID_CATEGORIES.includes(category) ||
     !VALID_DURATIONS.includes(input.durationSeconds) ||
     typeof input.creatorGuestId !== "string" ||
     input.creatorGuestId.length === 0 ||
     !displayName ||
-    movieFilter === "invalid"
+    movieFilter === "invalid" ||
+    restaurantFilter === "invalid"
   ) {
     return { ok: false, error: "Invalid session configuration." };
   }
@@ -130,6 +182,7 @@ export async function createSessionAction(input: {
       locationLabel:
         category === "EAT" && !hasCoords && locationLabel.length > 0 ? locationLabel : null,
       movieFilter: category === "WATCH" ? movieFilter : null,
+      restaurantFilter: category === "EAT" ? restaurantFilter : null,
     });
     return { ok: true, data };
   } catch (error) {

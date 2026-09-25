@@ -4,6 +4,7 @@ import { generateSessionCode } from "@/lib/session-code";
 // "server-only" runtime module into a client bundle (DetailSheet.tsx
 // already relies on the same thing for MovieDetail).
 import type { MovieFilter } from "@/services/movies";
+import type { RestaurantFilter } from "@/services/restaurants";
 
 export type SessionCategory = "WATCH" | "EAT";
 export type SessionMode = "COUPLE" | "GROUP";
@@ -35,6 +36,8 @@ export interface SessionRow {
   location_label: string | null;
   // WATCH only (PRD section 11-12) — null means "All Movies," no filter.
   movie_filter: MovieFilter | null;
+  // EAT only (PRD section 13) — null means "All Restaurants," no filter.
+  restaurant_filter: RestaurantFilter | null;
 }
 
 export interface ParticipantRow {
@@ -70,6 +73,8 @@ interface CreateSessionInput {
   locationLabel?: string | null;
   // WATCH only — see SessionRow's movie_filter field.
   movieFilter?: MovieFilter | null;
+  // EAT only — see SessionRow's restaurant_filter field.
+  restaurantFilter?: RestaurantFilter | null;
 }
 
 export async function createSession({
@@ -81,6 +86,7 @@ export async function createSession({
   locationLng = null,
   locationLabel = null,
   movieFilter = null,
+  restaurantFilter = null,
 }: CreateSessionInput): Promise<{
   session: SessionRow;
   participant: ParticipantRow;
@@ -108,6 +114,7 @@ export async function createSession({
         location_lng: locationLng,
         location_label: locationLabel,
         movie_filter: movieFilter,
+        restaurant_filter: restaurantFilter,
       })
       .select()
       .single();

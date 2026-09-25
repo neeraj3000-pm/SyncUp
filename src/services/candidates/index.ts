@@ -18,6 +18,7 @@ async function getCandidatesFromProvider(session: SessionRow, batchNumber: numbe
           ? { lat: session.location_lat, lng: session.location_lng }
           : { label: session.location_label ?? "" },
         batchNumber,
+        session.restaurant_filter,
       );
   }
 }
