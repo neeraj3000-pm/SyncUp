@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getOrCreateGuestId, setStoredParticipantId } from "@/lib/guest";
 import { joinSessionAction } from "@/services/sessions/actions";
+import { track } from "@/lib/analytics";
 
-export function JoinForm({ sessionId }: { sessionId: string }) {
+export function JoinForm({ sessionId, category }: { sessionId: string; category?: string }) {
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +33,7 @@ export function JoinForm({ sessionId }: { sessionId: string }) {
       return;
     }
 
+    track("join_completed", { session_id: sessionId, category });
     setStoredParticipantId(sessionId, result.data.id);
     router.push(`/session/${sessionId}`);
   }

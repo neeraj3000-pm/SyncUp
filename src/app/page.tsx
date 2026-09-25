@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { CardFanHero } from "@/components/CardFanHero";
+import { TrackedLink } from "@/components/TrackedLink";
 
 export default function LandingPage() {
   return (
@@ -37,21 +37,23 @@ export default function LandingPage() {
       </div>
 
       <div className="relative mt-10 flex w-full max-w-xs flex-col gap-4">
-        <Link
+        <TrackedLink
           href="/create"
+          event="start_clicked"
           className="rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
         >
           Start a SyncUp
-        </Link>
+        </TrackedLink>
 
         <div className="flex flex-col gap-2">
           <p className="text-sm text-foreground-muted">Already have a code?</p>
-          <Link
+          <TrackedLink
             href="/join"
+            event="join_clicked"
             className="rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
           >
             Join a SyncUp
-          </Link>
+          </TrackedLink>
         </div>
       </div>
 

@@ -74,7 +74,7 @@ export function JoinSessionView({
         </div>
 
         <div className="w-full">
-          <JoinForm sessionId={sessionId} />
+          <JoinForm sessionId={sessionId} category={category} />
         </div>
       </div>
     </>

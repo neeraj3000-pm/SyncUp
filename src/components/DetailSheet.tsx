@@ -7,6 +7,7 @@ import { getMovieDetailAction } from "@/services/movies/actions";
 import type { MovieDetail } from "@/services/movies";
 import { getRestaurantDetailAction } from "@/services/restaurants/actions";
 import type { RestaurantDetail } from "@/services/restaurants";
+import { track } from "@/lib/analytics";
 
 // PRD section 24/35: "the card helps you decide, the detail view helps you
 // investigate" — this is where the data the swipe card deliberately
@@ -17,15 +18,21 @@ export function DetailSheet({ item, onClose }: { item: ItemRow; onClose: () => v
   return (
     <Sheet onClose={onClose} title={item.title}>
       {item.category === "WATCH" ? (
-        <MovieDetailContent externalId={item.external_id} />
+        <MovieDetailContent externalId={item.external_id} category={item.category} />
       ) : (
-        <RestaurantDetailContent externalId={item.external_id} />
+        <RestaurantDetailContent externalId={item.external_id} category={item.category} />
       )}
     </Sheet>
   );
 }
 
-function MovieDetailContent({ externalId }: { externalId: string }) {
+function MovieDetailContent({
+  externalId,
+  category,
+}: {
+  externalId: string;
+  category: string;
+}) {
   const [detail, setDetail] = useState<MovieDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,6 +95,7 @@ function MovieDetailContent({ externalId }: { externalId: string }) {
           href={detail.trailerUrl}
           target="_blank"
           rel="noreferrer"
+          onClick={() => track("action_clicked", { category, action: "trailer" })}
           className="text-sm font-semibold text-primary underline underline-offset-2"
         >
           Watch Trailer
@@ -114,6 +122,7 @@ function MovieDetailContent({ externalId }: { externalId: string }) {
             href={detail.streaming.link}
             target="_blank"
             rel="noreferrer"
+            onClick={() => track("action_clicked", { category, action: "watch" })}
             className="w-full rounded-pill bg-primary px-8 py-4 text-center text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
           >
             View Options
@@ -128,7 +137,13 @@ function MovieDetailContent({ externalId }: { externalId: string }) {
   );
 }
 
-function RestaurantDetailContent({ externalId }: { externalId: string }) {
+function RestaurantDetailContent({
+  externalId,
+  category,
+}: {
+  externalId: string;
+  category: string;
+}) {
   const [detail, setDetail] = useState<RestaurantDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -190,6 +205,7 @@ function RestaurantDetailContent({ externalId }: { externalId: string }) {
             href={detail.mapUrl}
             target="_blank"
             rel="noreferrer"
+            onClick={() => track("action_clicked", { category, action: "map" })}
             className="w-full rounded-pill border border-border px-8 py-4 text-center text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
           >
             View on Map
@@ -200,6 +216,7 @@ function RestaurantDetailContent({ externalId }: { externalId: string }) {
             href={detail.websiteUrl}
             target="_blank"
             rel="noreferrer"
+            onClick={() => track("action_clicked", { category, action: "website" })}
             className="w-full rounded-pill bg-primary px-8 py-4 text-center text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
           >
             Visit Website

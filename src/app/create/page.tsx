@@ -10,6 +10,7 @@ import {
 } from "@/services/location/actions";
 import type { LocationSuggestion } from "@/services/location";
 import { EatIcon, WatchIcon } from "@/components/icons/CategoryIcons";
+import { track } from "@/lib/analytics";
 
 const CATEGORIES = [
   { value: "WATCH", Icon: WatchIcon, label: "Watch", helper: "Movies and more" },
@@ -169,6 +170,12 @@ function CreateForm() {
       return;
     }
 
+    track("session_created", {
+      session_id: result.data.session.id,
+      category,
+      duration_seconds: duration,
+      has_location: category === "EAT" ? Boolean(coords || areaText.trim()) : undefined,
+    });
     setStoredParticipantId(result.data.session.id, result.data.participant.id);
     router.push(`/session/${result.data.session.id}`);
   }
@@ -185,7 +192,10 @@ function CreateForm() {
             <button
               key={c.value}
               type="button"
-              onClick={() => setCategory(c.value)}
+              onClick={() => {
+                setCategory(c.value);
+                track("category_selected", { category: c.value });
+              }}
               aria-pressed={category === c.value}
               className={`flex items-center justify-between gap-3 rounded-card border p-4 text-left shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                 category === c.value
@@ -302,7 +312,10 @@ function CreateForm() {
             <button
               key={d.value}
               type="button"
-              onClick={() => setDuration(d.value)}
+              onClick={() => {
+                setDuration(d.value);
+                track("timer_selected", { duration_seconds: d.value });
+              }}
               aria-pressed={duration === d.value}
               className={`flex items-center justify-between rounded-card border px-4 py-3 text-left shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                 duration === d.value

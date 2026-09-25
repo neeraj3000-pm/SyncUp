@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { Analytics } from "@/components/Analytics";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -88,6 +90,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <ThemeToggle />
         <ServiceWorkerRegister />
+        {/* Suspense keeps useSearchParams' static-rendering opt-out scoped
+            to just this component — every route here is otherwise
+            prerendered (see the build output's "○ Static" pages), and
+            without this boundary a layout-level useSearchParams would pull
+            all of them into dynamic rendering. */}
+        <Suspense fallback={null}>
+          <Analytics />
+        </Suspense>
       </body>
     </html>
   );

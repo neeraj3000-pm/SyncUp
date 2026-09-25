@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import type { SessionRow } from "@/services/sessions";
@@ -9,6 +9,7 @@ import type { ItemRow } from "@/services/candidates";
 import { ResultCard } from "@/components/ResultCard";
 import { DetailSheet } from "@/components/DetailSheet";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { track } from "@/lib/analytics";
 
 // The reveal is the one moment the whole app builds toward (PRD section
 // 32/33) — worth a cascade instead of the whole list appearing at once
@@ -27,6 +28,24 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
   const perfect = matches.filter((m) => Math.round(m.sync_score) === 100);
   const rest = matches.filter((m) => Math.round(m.sync_score) !== 100);
   const reduceMotion = useReducedMotion();
+
+  // Fires once per mount — ResultsView isn't kept around across a Re-Sync
+  // (that navigates to /create, a fresh mount next time), so there's no
+  // need for the ref-guard pattern used for events that can recur within
+  // one component's lifetime elsewhere in this app.
+  useEffect(() => {
+    track("reveal_shown", {
+      session_id: session.id,
+      category: session.category,
+      match_count: matches.length,
+    });
+    if (perfect.length > 0) {
+      track("perfect_match", { session_id: session.id, category: session.category, count: perfect.length });
+    } else if (rest.length > 0) {
+      track("partial_match", { session_id: session.id, category: session.category, count: rest.length });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Critically damped, no bounce — same "safe house style" as the rest of
   // the app (apple-design skill), reserved for momentum-driven gestures
@@ -78,6 +97,9 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
           </div>
           <Link
             href={`/create?category=${session.category}`}
+            onClick={() =>
+              track("resync_clicked", { category: session.category, had_perfect_match: false })
+            }
             className="flex items-center justify-center whitespace-nowrap rounded-pill bg-primary px-2 text-[15px] font-bold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
           >
             Re-Sync
@@ -123,6 +145,9 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
         <motion.div variants={item}>
           <Link
             href={`/create?category=${session.category}`}
+            onClick={() =>
+              track("resync_clicked", { category: session.category, had_perfect_match: true })
+            }
             className="w-full rounded-pill border border-border px-8 py-4 text-center text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
           >
             Re-Sync

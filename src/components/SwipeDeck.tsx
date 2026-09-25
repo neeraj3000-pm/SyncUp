@@ -15,6 +15,7 @@ import { DecisionCard } from "@/components/DecisionCard";
 import { MovieCard } from "@/components/MovieCard";
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { SwipeProgress } from "@/components/SwipeProgress";
+import { track } from "@/lib/analytics";
 
 const PROGRESS_POLL_MS = 4000;
 // Matches DecisionCard's fling transition (300ms) — the queue only advances
@@ -59,6 +60,11 @@ export function SwipeDeck({
   const [error, setError] = useState<string | null>(null);
   const [revealPromptDismissed, setRevealPromptDismissed] = useState(false);
   const advancingRef = useRef(false);
+  // Guards "batch_completed" against firing on every re-render while
+  // queue.length stays 0 — keyed on items.length so a fresh batch pulled
+  // in via "Show Me 50 More" can still fire it again once that one's
+  // exhausted too.
+  const batchCompletedForRef = useRef<number | null>(null);
 
   // Resume support: figure out what this participant already swiped (across
   // a refresh, or rejoining) before showing any card, so already-decided
@@ -106,6 +112,16 @@ export function SwipeDeck({
     };
   }, [sessionId, participantId]);
 
+  // The current batch (initial 50, or the next 50 from "Show Me More") has
+  // been fully swiped through.
+  useEffect(() => {
+    if (queue === null || queue.length !== 0 || batchCompletedForRef.current === items.length) {
+      return;
+    }
+    batchCompletedForRef.current = items.length;
+    track("batch_completed", { session_id: sessionId, category, items_seen: items.length });
+  }, [queue, items.length, sessionId, category]);
+
   function handleSwipe(item: ItemRow, direction: "SYNC" | "PASS", superLiked = false) {
     if (advancingRef.current) return;
     advancingRef.current = true;
@@ -113,6 +129,7 @@ export function SwipeDeck({
     // is attempted — leaving it up would misreport an already-resolved
     // problem as still ongoing once this one succeeds.
     setError(null);
+    track("swipe_recorded", { session_id: sessionId, category, direction, super_liked: superLiked });
 
     swipeAction({ sessionId, participantId, itemId: item.id, direction, superLiked }).then(
       (result) => {
@@ -146,6 +163,7 @@ export function SwipeDeck({
     // screen the server never actually recorded, with no way back to retry.
     setFinished(true);
     setError(null);
+    track("participant_finished", { session_id: sessionId, category });
     const result = await markFinishedAction(participantId);
     if (!result.ok) {
       setFinished(false);

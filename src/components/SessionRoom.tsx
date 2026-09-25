@@ -20,6 +20,7 @@ import { ParticipantList } from "@/components/ParticipantList";
 import { SessionTimer } from "@/components/SessionTimer";
 import { SwipeDeck } from "@/components/SwipeDeck";
 import { CategoryLabel } from "@/components/CategoryLabel";
+import { track } from "@/lib/analytics";
 
 const MIN_TO_START = 2;
 const PARTICIPANTS_POLL_MS = 4000;
@@ -55,6 +56,22 @@ export function SessionRoom({
   // when it rendered this page; the initializer form of useState means
   // this genuinely only runs once, not on every render.
   const [clockOffsetMs] = useState(() => new Date(serverNow).getTime() - Date.now());
+  // Fires once, only for the creator (they're the one who "generated" it) —
+  // the effect can re-run on every participants/timer poll, so a ref
+  // guards it rather than relying on the dependency array alone.
+  const inviteTrackedRef = useRef(false);
+  useEffect(() => {
+    if (
+      inviteTrackedRef.current ||
+      session.status !== "WAITING" ||
+      !myGuestId ||
+      myGuestId !== session.creator_guest_id
+    ) {
+      return;
+    }
+    inviteTrackedRef.current = true;
+    track("invite_generated", { session_id: session.id, category: session.category });
+  }, [session.status, session.id, session.category, session.creator_guest_id, myGuestId]);
 
   // The candidate pool is generated inside startSession, which happens
   // after this page's initial server-side fetch — so whoever's on this
@@ -397,6 +414,11 @@ export function SessionRoom({
                   setStartError(result.error);
                   return;
                 }
+                track("session_started", {
+                  session_id: session.id,
+                  category: session.category,
+                  participant_count: participants.length,
+                });
                 setSession(result.data);
               }}
               className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97] disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
