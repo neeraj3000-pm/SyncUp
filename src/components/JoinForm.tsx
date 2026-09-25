@@ -52,7 +52,7 @@ export function JoinForm({ sessionId }: { sessionId: string }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Ananya"
-          className="rounded-card border border-border bg-surface px-4 py-3 text-lg outline-none focus:border-primary"
+          className="rounded-card border border-border bg-surface px-4 py-3 text-lg shadow-card outline-none focus:border-primary"
         />
       </div>
 

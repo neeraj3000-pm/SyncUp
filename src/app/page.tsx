@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CardFanHero } from "@/components/CardFanHero";
 
 export default function LandingPage() {
   return (
@@ -15,6 +16,13 @@ export default function LandingPage() {
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-[6vh] h-72 w-72 -translate-x-1/2 rounded-full bg-primary/25 blur-[70px]"
+      />
+      {/* A second, lower glow so the atmosphere carries down to the hero
+          illustration below instead of the page having color only at the
+          very top and nothing everywhere else. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[56vh] h-[340px] w-[340px] -translate-x-1/2 rounded-full bg-primary/[0.16] blur-[90px]"
       />
 
       <div className="relative flex flex-col gap-4">
@@ -40,14 +48,21 @@ export default function LandingPage() {
           <p className="text-sm text-foreground-muted">Already have a code?</p>
           <Link
             href="/join"
-            className="rounded-pill border border-border px-8 py-4 text-lg font-semibold transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+            className="rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
           >
             Join a SyncUp
           </Link>
         </div>
       </div>
 
-      <p className="relative mt-auto pt-10 text-sm text-foreground-muted">No login required.</p>
+      {/* Brings the app icon's identity into the app itself instead of
+          leaving it only on the home screen, and fills what used to be
+          dead space between the buttons and the footer on a tall phone
+          screen. Purely visual, no new copy, so the "headline + two
+          buttons" rule above still holds. */}
+      <CardFanHero />
+
+      <p className="relative text-sm text-foreground-muted">No login required.</p>
     </main>
   );
 }

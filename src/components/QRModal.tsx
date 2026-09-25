@@ -33,7 +33,7 @@ export function QRModal({
             scan reliability if the contrast between fgColor/bgColor ever
             drops, and a scanner failing to read the code entirely is a far
             worse outcome than it not matching the surrounding surface. */}
-        <div className="rounded-card border border-border bg-white p-5">
+        <div className="rounded-card border border-border bg-white p-5 shadow-card">
           <QRCodeSVG
             value={url}
             size={200}

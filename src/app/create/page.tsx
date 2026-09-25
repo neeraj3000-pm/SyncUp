@@ -9,10 +9,11 @@ import {
   getLocationSuggestionsAction,
 } from "@/services/location/actions";
 import type { LocationSuggestion } from "@/services/location";
+import { EatIcon, WatchIcon } from "@/components/icons/CategoryIcons";
 
 const CATEGORIES = [
-  { value: "WATCH", emoji: "🎬", label: "Watch", helper: "Movies and more" },
-  { value: "EAT", emoji: "🍔", label: "Eat", helper: "Restaurants and food" },
+  { value: "WATCH", Icon: WatchIcon, label: "Watch", helper: "Movies and more" },
+  { value: "EAT", Icon: EatIcon, label: "Eat", helper: "Restaurants and food" },
 ] as const;
 
 const DURATIONS = [
@@ -186,15 +187,21 @@ function CreateForm() {
               type="button"
               onClick={() => setCategory(c.value)}
               aria-pressed={category === c.value}
-              className={`flex flex-col items-start gap-1 rounded-card border p-4 text-left transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
+              className={`flex items-center justify-between gap-3 rounded-card border p-4 text-left shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                 category === c.value
                   ? "border-primary bg-surface-raised"
                   : "border-border bg-surface"
               }`}
             >
-              <span className="text-2xl">{c.emoji}</span>
-              <span className="font-semibold">{c.label}</span>
-              <span className="text-sm text-foreground-muted">{c.helper}</span>
+              <span className="flex min-w-0 flex-col gap-1">
+                <span className="font-semibold">{c.label}</span>
+                <span className="text-sm text-foreground-muted">{c.helper}</span>
+              </span>
+              <span
+                className={`flex-shrink-0 ${category === c.value ? "text-primary" : "text-foreground-muted"}`}
+              >
+                <c.Icon className="h-9 w-9" />
+              </span>
             </button>
           ))}
         </div>
@@ -209,7 +216,7 @@ function CreateForm() {
             type="button"
             onClick={handleUseMyLocation}
             disabled={geoLoading}
-            className={`w-full rounded-card border px-4 py-3 text-left font-semibold transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] disabled:opacity-50 ${
+            className={`w-full rounded-card border px-4 py-3 text-left font-semibold shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] disabled:opacity-50 ${
               coordsSource === "gps" ? "border-primary bg-surface-raised" : "border-border bg-surface"
             }`}
           >
@@ -254,7 +261,7 @@ function CreateForm() {
               aria-expanded={showSuggestions && suggestions.length > 0}
               aria-autocomplete="list"
               aria-controls="location-suggestions"
-              className="w-full rounded-card border border-border bg-surface px-4 py-3 text-lg outline-none focus:border-primary"
+              className="w-full rounded-card border border-border bg-surface px-4 py-3 text-lg shadow-card outline-none focus:border-primary"
             />
             {showSuggestions && suggestions.length > 0 && (
               <ul
@@ -297,7 +304,7 @@ function CreateForm() {
               type="button"
               onClick={() => setDuration(d.value)}
               aria-pressed={duration === d.value}
-              className={`flex items-center justify-between rounded-card border px-4 py-3 text-left transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
+              className={`flex items-center justify-between rounded-card border px-4 py-3 text-left shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                 duration === d.value
                   ? "border-primary bg-surface-raised"
                   : "border-border bg-surface"
@@ -322,7 +329,7 @@ function CreateForm() {
           onChange={(e) => setName(e.target.value)}
           placeholder="Neeraj"
           aria-labelledby="name-heading"
-          className="rounded-card border border-border bg-surface px-4 py-3 text-lg outline-none focus:border-primary"
+          className="rounded-card border border-border bg-surface px-4 py-3 text-lg shadow-card outline-none focus:border-primary"
         />
         <p className="text-xs text-foreground-muted">
           Shown to people you invite, e.g. &quot;{name.trim() || "Neeraj"} wants to

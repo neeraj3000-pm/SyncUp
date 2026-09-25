@@ -22,7 +22,7 @@ export function SwipeProgress({
       {progress.map((p) => (
         <li
           key={p.participant_id}
-          className="flex items-center justify-between rounded-card border border-border bg-surface px-4 py-2 text-sm"
+          className="flex items-center justify-between rounded-card border border-border bg-surface px-4 py-2 text-sm shadow-card"
         >
           <span>
             {p.display_name}
