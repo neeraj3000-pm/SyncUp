@@ -9,47 +9,7 @@ import {
   getLocationSuggestionsAction,
 } from "@/services/location/actions";
 import type { LocationSuggestion } from "@/services/location";
-
-// Browser emoji rendered inconsistently across platforms and read as a
-// placeholder here, not a deliberate choice — a thin-stroke outline pair
-// (currentColor, matching ThemeToggle's sun/moon icons) is the considered
-// alternative, at the size these actually get shown at (2xl, the first
-// thing this screen shows).
-function WatchIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="1.75" />
-      <path
-        d="M10 8.5l6 3.5-6 3.5v-7z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function EatIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M8 2v6.5M6 2v3.5a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V2M8 8.5V21"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M17 2c-2 0-3.2 1.8-3.2 4.5S15 11 17 11"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M17 2v19" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-    </svg>
-  );
-}
+import { EatIcon, WatchIcon } from "@/components/icons/CategoryIcons";
 
 const CATEGORIES = [
   { value: "WATCH", Icon: WatchIcon, label: "Watch", helper: "Movies and more" },
@@ -227,17 +187,21 @@ function CreateForm() {
               type="button"
               onClick={() => setCategory(c.value)}
               aria-pressed={category === c.value}
-              className={`flex flex-col items-start gap-1 rounded-card border p-4 text-left shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
+              className={`flex items-center justify-between gap-3 rounded-card border p-4 text-left shadow-card transition-[background-color,border-color,transform,scale] duration-150 ease-out active:scale-[0.97] ${
                 category === c.value
                   ? "border-primary bg-surface-raised"
                   : "border-border bg-surface"
               }`}
             >
-              <span className={category === c.value ? "text-primary" : "text-foreground-muted"}>
-                <c.Icon />
+              <span className="flex min-w-0 flex-col gap-1">
+                <span className="font-semibold">{c.label}</span>
+                <span className="text-sm text-foreground-muted">{c.helper}</span>
               </span>
-              <span className="font-semibold">{c.label}</span>
-              <span className="text-sm text-foreground-muted">{c.helper}</span>
+              <span
+                className={`flex-shrink-0 ${category === c.value ? "text-primary" : "text-foreground-muted"}`}
+              >
+                <c.Icon className="h-9 w-9" />
+              </span>
             </button>
           ))}
         </div>

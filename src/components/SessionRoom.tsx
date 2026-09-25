@@ -19,11 +19,7 @@ import { QRModal } from "@/components/QRModal";
 import { ParticipantList } from "@/components/ParticipantList";
 import { SessionTimer } from "@/components/SessionTimer";
 import { SwipeDeck } from "@/components/SwipeDeck";
-
-const CATEGORY_LABEL: Record<string, string> = {
-  WATCH: "what to watch 🎬",
-  EAT: "where to eat 🍔",
-};
+import { CategoryLabel } from "@/components/CategoryLabel";
 
 const MIN_TO_START = 2;
 const PARTICIPANTS_POLL_MS = 4000;
@@ -293,7 +289,7 @@ export function SessionRoom({
     return (
       <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
         <h1 className="sr-only">
-          Deciding {CATEGORY_LABEL[session.category] ?? session.category}
+          Deciding <CategoryLabel category={session.category} />
         </h1>
         {session.expires_at && (
           <SessionTimer expiresAt={session.expires_at} clockOffsetMs={clockOffsetMs} />
@@ -334,7 +330,7 @@ export function SessionRoom({
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold leading-tight tracking-tight">Your SyncUp</h1>
         <p className="text-foreground-muted">
-          Deciding {CATEGORY_LABEL[session.category] ?? session.category}
+          Deciding <CategoryLabel category={session.category} />
         </p>
       </div>
 

@@ -4,11 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useStoredParticipantId } from "@/lib/guest";
 import { JoinForm } from "@/components/JoinForm";
-
-const CATEGORY_LABEL: Record<string, string> = {
-  WATCH: "what to watch 🎬",
-  EAT: "where to eat 🍔",
-};
+import { CategoryLabel } from "@/components/CategoryLabel";
 
 export function JoinSessionView({
   sessionId,
@@ -32,8 +28,6 @@ export function JoinSessionView({
 
   if (storedParticipantId !== null) return null;
 
-  const label = CATEGORY_LABEL[category] ?? category;
-
   return (
     <div className="flex w-full flex-col items-center gap-8 text-center">
       <div className="flex flex-col gap-2">
@@ -41,10 +35,12 @@ export function JoinSessionView({
           {creatorName ? (
             <>
               <span className="font-semibold">{creatorName}</span> wants to
-              decide {label}
+              decide <CategoryLabel category={category} />
             </>
           ) : (
-            <>Someone wants to decide {label}</>
+            <>
+              Someone wants to decide <CategoryLabel category={category} />
+            </>
           )}
         </h1>
       </div>
