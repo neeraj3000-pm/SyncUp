@@ -326,82 +326,96 @@ export function SessionRoom({
 
   // WAITING
   return (
-    <div className="flex w-full flex-col items-center gap-8 text-center">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold leading-tight tracking-tight">Your SyncUp</h1>
-        <p className="text-foreground-muted">
-          Deciding <CategoryLabel category={session.category} />
-        </p>
-      </div>
-
-      <div className="rounded-card border border-border bg-surface px-10 py-6 shadow-card">
-        <p className="text-sm text-foreground-muted">Share this code</p>
-        <p className="font-mono text-4xl font-bold tracking-[0.2em] text-primary">
-          {session.code}
-        </p>
-      </div>
-
-      <div className="flex w-full flex-col gap-3">
-        <CopyLinkButton path={`/join/${session.code}`} />
-        <button
-          type="button"
-          onClick={() => setShowQR(true)}
-          className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
-        >
-          Show QR Code
-        </button>
-      </div>
-
-      {showQR && (
-        <QRModal
-          path={`/join/${session.code}`}
-          code={session.code}
-          onClose={() => setShowQR(false)}
-        />
-      )}
-
-      <ParticipantList
-        participants={participants}
-        myParticipantId={myParticipantId}
-        hostParticipantId={hostParticipantId}
+    <>
+      {/* Same atmospheric glow as the join screens (join/page.tsx,
+          JoinSessionView) — this was the one screen in that trio still
+          reading as flat/empty. Fixed, not absolute, so it doesn't need a
+          relative ancestor sized to the viewport (matches results page's
+          reasoning); the content div right below gets `relative` itself so
+          it still paints above this rather than under it (a position:fixed
+          sibling otherwise paints over a plain static one regardless of
+          DOM order). */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed left-1/2 top-[50vh] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.14] blur-[80px]"
       />
+      <div className="relative flex w-full flex-col items-center gap-8 text-center">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-bold leading-tight tracking-tight">Your SyncUp</h1>
+          <p className="text-foreground-muted">
+            Deciding <CategoryLabel category={session.category} />
+          </p>
+        </div>
 
-      {isCreator ? (
-        <div className="flex w-full flex-col items-center gap-2">
+        <div className="rounded-card border border-border bg-surface px-10 py-6 shadow-card">
+          <p className="text-sm text-foreground-muted">Share this code</p>
+          <p className="font-mono text-4xl font-bold tracking-[0.2em] text-primary">
+            {session.code}
+          </p>
+        </div>
+
+        <div className="flex w-full flex-col gap-3">
+          <CopyLinkButton path={`/join/${session.code}`} />
           <button
             type="button"
-            disabled={starting || participants.length < MIN_TO_START}
-            onClick={async () => {
-              if (!myGuestId) return;
-              setStarting(true);
-              setStartError(null);
-              const result = await startSessionAction({
-                sessionId: session.id,
-                guestId: myGuestId,
-              });
-              setStarting(false);
-              if (!result.ok) {
-                setStartError(result.error);
-                return;
-              }
-              setSession(result.data);
-            }}
-            className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97] disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
+            onClick={() => setShowQR(true)}
+            className="w-full rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
           >
-            {starting ? "Starting…" : "Start SyncUp"}
+            Show QR Code
           </button>
-          {participants.length < MIN_TO_START && (
-            <p className="text-sm text-foreground-muted">
-              Need at least {MIN_TO_START} people to start.
-            </p>
-          )}
-          {startError && <p className="text-sm text-red-500">{startError}</p>}
         </div>
-      ) : (
-        <p className="text-sm text-foreground-muted">
-          Waiting for the host to start the SyncUp…
-        </p>
-      )}
-    </div>
+
+        {showQR && (
+          <QRModal
+            path={`/join/${session.code}`}
+            code={session.code}
+            onClose={() => setShowQR(false)}
+          />
+        )}
+
+        <ParticipantList
+          participants={participants}
+          myParticipantId={myParticipantId}
+          hostParticipantId={hostParticipantId}
+        />
+
+        {isCreator ? (
+          <div className="flex w-full flex-col items-center gap-2">
+            <button
+              type="button"
+              disabled={starting || participants.length < MIN_TO_START}
+              onClick={async () => {
+                if (!myGuestId) return;
+                setStarting(true);
+                setStartError(null);
+                const result = await startSessionAction({
+                  sessionId: session.id,
+                  guestId: myGuestId,
+                });
+                setStarting(false);
+                if (!result.ok) {
+                  setStartError(result.error);
+                  return;
+                }
+                setSession(result.data);
+              }}
+              className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97] disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
+            >
+              {starting ? "Starting…" : "Start SyncUp"}
+            </button>
+            {participants.length < MIN_TO_START && (
+              <p className="text-sm text-foreground-muted">
+                Need at least {MIN_TO_START} people to start.
+              </p>
+            )}
+            {startError && <p className="text-sm text-red-500">{startError}</p>}
+          </div>
+        ) : (
+          <p className="text-sm text-foreground-muted">
+            Waiting for the host to start the SyncUp…
+          </p>
+        )}
+      </div>
+    </>
   );
 }
