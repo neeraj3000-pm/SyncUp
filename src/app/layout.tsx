@@ -10,7 +10,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "SyncUp — Stop debating. SyncUp.",
+  title: "SyncUp! — Stop debating. SyncUp!",
   description:
     "Swipe with the people you're with. SyncUp finds what everyone actually wants to watch or eat.",
   manifest: "/manifest.json",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     // options would instead show a plain white or black strip that
     // clashes with the app's own cream/navy background.
     statusBarStyle: "black-translucent",
-    title: "SyncUp",
+    title: "SyncUp!",
   },
 };
 

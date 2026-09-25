@@ -3,7 +3,7 @@ import { CardFanHero } from "@/components/CardFanHero";
 
 export default function LandingPage() {
   return (
-    <main className="relative flex min-h-0 flex-1 flex-col items-center overflow-y-auto overscroll-contain px-6 pb-8 pt-6 text-center">
+    <main className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overscroll-contain px-6 py-8 text-center">
       {/* PRD section 9 deliberately keeps this screen to headline + two
           buttons — the 10-second rule (4.4) means more copy or feature
           callouts would work against the goal, not toward it. This glow is
@@ -23,39 +23,33 @@ export default function LandingPage() {
         className="pointer-events-none absolute left-1/2 top-[56vh] h-[340px] w-[340px] -translate-x-1/2 rounded-full bg-primary/[0.16] blur-[90px]"
       />
 
-      {/* Brings the app icon's identity into the app itself, at the top of
-          the screen — matching where this same illustration sits on every
-          other screen that has it (join, "X wants to decide...") instead
-          of being the one place it was bottom-anchored. Its own flex-1
-          absorbs the leftover space above the headline/buttons, which is
-          what pushes that block down toward the bottom of the screen —
-          easier to reach one-handed — without risking overflow on a
-          shorter viewport the way a hard-coded bottom anchor would. */}
+      {/* Brings the app icon's identity into the app itself, above the
+          headline — matching where this same illustration sits on every
+          other screen that has it (join, "X wants to decide..."). The
+          whole group below (hero, headline, buttons, footer) is centered
+          as one block via justify-center on main, rather than pinned to
+          the top with an elastic gap stretching the buttons toward the
+          bottom — that read as too much empty space on a tall phone
+          screen once the hero moved up here. */}
       <CardFanHero />
 
       <div className="relative flex flex-col gap-4">
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
           Stop debating.
           <br />
-          <span className="text-primary">SyncUp.</span>
+          <span className="text-primary">SyncUp!</span>
         </h1>
         <p className="max-w-sm text-lg text-foreground-muted">
           Find something everyone actually wants to do.
         </p>
       </div>
 
-      {/* A plain zero-basis spacer, not flex-1 on the hero above — this is
-          what actually pushes the buttons down toward the bottom of the
-          screen (easier one-handed reach) while still shrinking cleanly to
-          nothing on a short viewport instead of forcing an overflow. */}
-      <div className="min-h-4 flex-1" />
-
-      <div className="relative flex w-full max-w-xs flex-col gap-4">
+      <div className="relative mt-6 flex w-full max-w-xs flex-col gap-4">
         <Link
           href="/create"
           className="rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97]"
         >
-          Start a SyncUp
+          Start a SyncUp!
         </Link>
 
         <div className="flex flex-col gap-2">
@@ -64,7 +58,7 @@ export default function LandingPage() {
             href="/join"
             className="rounded-pill border border-border px-8 py-4 text-lg font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
           >
-            Join a SyncUp
+            Join a SyncUp!
           </Link>
         </div>
       </div>

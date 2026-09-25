@@ -1,7 +1,7 @@
 {
-  "name": "SyncUp",
-  "short_name": "SyncUp",
-  "description": "Stop debating. SyncUp.",
+  "name": "SyncUp!",
+  "short_name": "SyncUp!",
+  "description": "Stop debating. SyncUp!",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f6f1e9",

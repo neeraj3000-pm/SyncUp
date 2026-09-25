@@ -175,7 +175,7 @@ function CreateForm() {
 
   return (
     <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col gap-10 overflow-y-auto overscroll-contain px-6 py-12">
-      <h1 className="sr-only">Create a SyncUp</h1>
+      <h1 className="sr-only">Create a SyncUp!</h1>
       <section className="flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-foreground-muted">
           What are you deciding?
@@ -344,7 +344,7 @@ function CreateForm() {
           disabled={!name.trim() || pending || needsLocation}
           className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97] disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
         >
-          {pending ? "Creating…" : "Create SyncUp"}
+          {pending ? "Creating…" : "Create SyncUp!"}
         </button>
       </form>
     </main>

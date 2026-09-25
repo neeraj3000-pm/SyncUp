@@ -317,7 +317,7 @@ export function SessionRoom({
             disabled={ending}
             className="text-sm text-foreground-muted underline underline-offset-2 disabled:opacity-50"
           >
-            {ending ? "Ending…" : "End SyncUp Now"}
+            {ending ? "Ending…" : "End SyncUp Now!"}
           </button>
         )}
       </div>
@@ -341,7 +341,7 @@ export function SessionRoom({
       />
       <div className="relative flex w-full flex-col items-center gap-4 text-center">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold leading-tight tracking-tight">Your SyncUp</h1>
+          <h1 className="text-2xl font-bold leading-tight tracking-tight">Your SyncUp!</h1>
           <p className="text-foreground-muted">
             Deciding <CategoryLabel category={session.category} />
           </p>
@@ -408,7 +408,7 @@ export function SessionRoom({
               }}
               className="w-full rounded-pill bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary/20 transition-[background-color,transform,scale] duration-150 ease-out hover:bg-primary-hover active:scale-[0.97] disabled:bg-border disabled:text-foreground-muted disabled:shadow-none"
             >
-              {starting ? "Starting…" : "Start SyncUp"}
+              {starting ? "Starting…" : "Start SyncUp!"}
             </button>
             {participants.length < MIN_TO_START && (
               <p className="text-sm text-foreground-muted">
