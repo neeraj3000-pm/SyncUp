@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useStoredParticipantId } from "@/lib/guest";
 import { JoinForm } from "@/components/JoinForm";
 import { CategoryLabel } from "@/components/CategoryLabel";
+import { CardFanHero } from "@/components/CardFanHero";
 
 export function JoinSessionView({
   sessionId,
@@ -37,7 +38,14 @@ export function JoinSessionView({
         aria-hidden
         className="pointer-events-none fixed left-1/2 top-[50vh] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.14] blur-[80px]"
       />
-      <div className="relative flex w-full flex-col items-center gap-8 text-center">
+      {/* flex-1 + min-h-0: fills the rest of main's height itself, so
+          CardFanHero's own flex-1 has something to grow into and actually
+          fills the empty space above the heading — same "brand
+          illustration in the leftover space" move as landing, just above
+          a bottom-anchored form instead of between two buttons and a
+          footer. */}
+      <div className="relative flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
+        <CardFanHero />
         <div className="flex flex-col gap-2">
           <h1 className="text-lg">
             {creatorName ? (
