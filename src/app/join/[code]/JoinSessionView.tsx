@@ -6,6 +6,7 @@ import { useStoredParticipantId } from "@/lib/guest";
 import { JoinForm } from "@/components/JoinForm";
 import { CategoryLabel } from "@/components/CategoryLabel";
 import { CardFanHero } from "@/components/CardFanHero";
+import { EatIcon, WatchIcon } from "@/components/icons/CategoryIcons";
 
 export function JoinSessionView({
   sessionId,
@@ -46,6 +47,12 @@ export function JoinSessionView({
           footer. */}
       <div className="relative flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
         <CardFanHero />
+        {/* Which category this particular invite is for, once more and
+            bigger than CategoryLabel's small inline icon in the heading
+            below — echoes the create page's own Watch/Eat icons rather
+            than introducing a third icon style. */}
+        {category === "WATCH" && <WatchIcon className="h-9 w-9 text-primary" />}
+        {category === "EAT" && <EatIcon className="h-9 w-9 text-primary" />}
         <div className="flex flex-col gap-2">
           <h1 className="text-lg">
             {creatorName ? (
