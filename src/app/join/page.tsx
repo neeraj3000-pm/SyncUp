@@ -16,28 +16,29 @@ export default function JoinLandingPage() {
   }
 
   return (
-    <main className="relative mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-end gap-8 overflow-y-auto overscroll-contain px-6 pb-28 pt-12 text-center">
+    <main className="relative mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center gap-8 overflow-y-auto overscroll-contain px-6 py-12 text-center">
       {/* Same atmospheric glow as the landing page (same reasoning: fills
           the empty space this column otherwise leaves on a tall phone
-          screen). justify-end (below) puts the code input and Continue
-          button in the bottom two-thirds of the screen, easier to reach
-          one-handed than dead center — the glow follows it down rather
-          than sitting where the content used to be. pb-28, not the usual
-          pb-12: leaves clearance below the button for ThemeToggle's fixed
-          bottom-right circle, which otherwise sits close enough to
-          overlap it now that the button itself has moved this much
-          lower. */}
+          screen). Top-anchored, not justify-end — pushing content toward
+          the bottom looked good on a tall test viewport but overflowed
+          off the TOP of shorter real phone screens, hiding the heading
+          above the fold instead of just needing an obvious scroll down.
+          The plain spacer below still pushes the form down when there's
+          room, without that risk (see its own comment). */}
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-[50vh] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.14] blur-[80px]"
       />
 
-      {/* flex-1 + min-h-0: fills the rest of main's height itself, so
-          CardFanHero's own flex-1 has something to grow into — same
-          "brand illustration in the leftover space" treatment as the
-          landing page and the "X wants to decide..." screen, kept
-          uniform here too rather than leaving this one screen plain. */}
+      {/* min-h-0 + flex-1: fills the rest of main's height itself, so the
+          spacer right below has real leftover space to absorb. */}
       <div className="relative flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
+        {/* A plain zero-basis spacer — not flex-1 on CardFanHero itself,
+            which turned out not to reliably shrink back down under real
+            overflow (see that component's own comment). This shrinks to
+            true zero on a short viewport instead of pushing content past
+            the fold. */}
+        <div className="min-h-0 flex-1" />
         <CardFanHero />
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold leading-tight tracking-tight">Join a SyncUp</h1>

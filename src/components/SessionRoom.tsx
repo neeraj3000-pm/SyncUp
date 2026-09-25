@@ -339,7 +339,7 @@ export function SessionRoom({
         aria-hidden
         className="pointer-events-none fixed left-1/2 top-[50vh] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.14] blur-[80px]"
       />
-      <div className="relative flex w-full flex-col items-center gap-8 text-center">
+      <div className="relative flex w-full flex-col items-center gap-4 text-center">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold leading-tight tracking-tight">Your SyncUp</h1>
           <p className="text-foreground-muted">
@@ -347,7 +347,7 @@ export function SessionRoom({
           </p>
         </div>
 
-        <div className="rounded-card border border-border bg-surface px-10 py-6 shadow-card">
+        <div className="rounded-card border border-border bg-surface px-10 py-5 shadow-card">
           <p className="text-sm text-foreground-muted">Share this code</p>
           <p className="font-mono text-4xl font-bold tracking-[0.2em] text-primary">
             {session.code}
@@ -373,11 +373,18 @@ export function SessionRoom({
           />
         )}
 
-        <ParticipantList
-          participants={participants}
-          myParticipantId={myParticipantId}
-          hostParticipantId={hostParticipantId}
-        />
+        {/* Capped and internally scrollable, same pattern as SwipeProgress
+            elsewhere — a group of up to 10 (PRD's max) would otherwise grow
+            this list tall enough to push the Start button below the fold
+            on its own, even with everything else on this screen kept
+            lean. */}
+        <div className="w-full max-h-48 overflow-y-auto overscroll-contain">
+          <ParticipantList
+            participants={participants}
+            myParticipantId={myParticipantId}
+            hostParticipantId={hostParticipantId}
+          />
+        </div>
 
         {isCreator ? (
           <div className="flex w-full flex-col items-center gap-2">
@@ -415,6 +422,14 @@ export function SessionRoom({
             Waiting for the host to start the SyncUp…
           </p>
         )}
+
+        {/* On a viewport short enough that this screen needs to scroll,
+            this gives the Start button room to clear ThemeToggle's fixed
+            bottom-right circle once scrolled all the way down — a trailing
+            spacer can't move the button itself (nothing after it in a
+            top-down flex column repositions what came before), it just
+            means there's still somewhere to scroll to past it. */}
+        <div aria-hidden className="h-10 w-full flex-shrink-0" />
       </div>
     </>
   );

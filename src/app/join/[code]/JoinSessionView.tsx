@@ -39,13 +39,15 @@ export function JoinSessionView({
         aria-hidden
         className="pointer-events-none fixed left-1/2 top-[50vh] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.14] blur-[80px]"
       />
-      {/* flex-1 + min-h-0: fills the rest of main's height itself, so
-          CardFanHero's own flex-1 has something to grow into and actually
-          fills the empty space above the heading — same "brand
-          illustration in the leftover space" move as landing, just above
-          a bottom-anchored form instead of between two buttons and a
-          footer. */}
+      {/* min-h-0 + flex-1: fills the rest of main's height itself, so the
+          spacer right below has real leftover space to absorb. */}
       <div className="relative flex w-full min-h-0 flex-1 flex-col items-center gap-6 text-center">
+        {/* A plain zero-basis spacer — not flex-1 on CardFanHero itself,
+            which turned out not to reliably shrink back down under real
+            overflow (see that component's own comment). This shrinks to
+            true zero on a short viewport instead of pushing content past
+            the fold. */}
+        <div className="min-h-0 flex-1" />
         <CardFanHero />
         {/* Which category this particular invite is for, once more and
             bigger than CategoryLabel's small inline icon in the heading

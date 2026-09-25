@@ -20,10 +20,17 @@ export function CategoryLabel({ category }: { category: string }) {
   if (!isKnown) return <>{category}</>;
 
   const Icon = ICON[category];
+  // inline-block + align-middle on the icon itself, not an inline-flex
+  // wrapper around both — inline-flex has no real baseline of its own, so
+  // browsers fall back to aligning its margin-box bottom edge against the
+  // surrounding sentence's text baseline, which is what was floating the
+  // icon above and to the side of the word before it (worse on Android
+  // Chrome than in the earlier desktop-browser testing here). This is the
+  // standard, predictable pattern for "icon next to inline text" instead.
   return (
-    <span className="inline-flex items-center gap-1 align-middle">
+    <span className="whitespace-nowrap">
       {LABEL[category]}
-      <Icon className="h-4 w-4 flex-shrink-0" />
+      <Icon className="ml-1 inline-block h-4 w-4 align-middle" />
     </span>
   );
 }

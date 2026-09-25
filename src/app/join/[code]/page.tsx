@@ -46,7 +46,7 @@ export default async function JoinByCodePage({
   const creatorName = await getCreatorName(session.id);
 
   return (
-    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center justify-end gap-8 overflow-y-auto overscroll-contain px-6 pb-28 pt-12">
+    <main className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col items-center gap-8 overflow-y-auto overscroll-contain px-6 py-12">
       <JoinSessionView
         sessionId={session.id}
         category={session.category}

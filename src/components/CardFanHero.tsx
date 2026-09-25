@@ -4,10 +4,17 @@
 // Fixed hex values, not theme tokens: this mirrors the actual icon file,
 // which is a single static asset that never changes color between light
 // and dark — --foreground/--secondary would flip on it in a way the real
-// icon never does. `flex-1` on the wrapper: it's meant to fill whatever
-// leftover vertical space its parent gives it, not the layout containers
-// used to build the effect — those stay part of it, in the page, the
-// pattern set on landing.
+// icon never does.
+//
+// Deliberately a fixed size, not flex-1 the way this used to grow to fill
+// leftover space itself: a flex item with flex-basis 0% (Tailwind's
+// flex-1) turned out not to shrink back down toward its min-height under
+// real overflow the way that reasoning assumed — it just rendered at
+// whatever the browser computed, past the viewport, pushing content below
+// the fold. A plain zero-basis spacer div in each caller (no min-height
+// of its own to get stuck above) is what reliably shrinks to nothing when
+// space is tight; this component just renders at its natural size next to
+// one of those.
 //
 // Each card also gets a border-border outline — the leftmost card's fixed
 // #2b2d42 is the exact same value as --background in dark mode, so
@@ -18,11 +25,11 @@
 // rather than a dark-mode-specific fix on the left card alone.
 export function CardFanHero() {
   return (
-    <div aria-hidden className="relative flex min-h-[120px] flex-1 items-center justify-center">
+    <div aria-hidden className="flex items-center justify-center py-2">
       <div className="flex items-center">
-        <div className="-mr-4 h-[98px] w-[76px] rotate-[-16deg] rounded-2xl border border-border bg-[#2b2d42] shadow-[0_12px_24px_-8px_rgba(43,45,66,0.25)]" />
-        <div className="z-10 h-[98px] w-[76px] rounded-2xl border border-border bg-primary shadow-[0_16px_32px_-8px_rgba(255,90,62,0.35)]" />
-        <div className="-ml-4 h-[98px] w-[76px] rotate-[16deg] rounded-2xl border border-border bg-[#8d99ae] shadow-[0_12px_24px_-8px_rgba(43,45,66,0.2)]" />
+        <div className="-mr-3 h-[84px] w-[64px] rotate-[-16deg] rounded-2xl border border-border bg-[#2b2d42] shadow-[0_12px_24px_-8px_rgba(43,45,66,0.25)]" />
+        <div className="z-10 h-[84px] w-[64px] rounded-2xl border border-border bg-primary shadow-[0_16px_32px_-8px_rgba(255,90,62,0.35)]" />
+        <div className="-ml-3 h-[84px] w-[64px] rotate-[16deg] rounded-2xl border border-border bg-[#8d99ae] shadow-[0_12px_24px_-8px_rgba(43,45,66,0.2)]" />
       </div>
     </div>
   );
