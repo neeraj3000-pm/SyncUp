@@ -250,7 +250,11 @@ export function SessionRoom({
 
   if (isActive) {
     return (
-      <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-6 px-6 py-6 text-center">
+      <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-6 overflow-y-auto overscroll-contain px-6 py-6 text-center">
+        {/* The timer + card + progress list + End SyncUp Now! button don't
+            always fit a short phone viewport on their own — this region
+            needs to actually scroll (not just clip) when they don't,
+            otherwise the button is unreachable with nothing to scroll. */}
         <h1 className="sr-only">
           Deciding <CategoryLabel category={session.category} />
         </h1>

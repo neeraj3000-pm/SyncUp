@@ -33,14 +33,25 @@ export function RestaurantFilterPicker({
 
   const tabs: FilterTab[] = [
     {
+      // Multi-select, unlike every other tab here: "Indian or Chinese" is a
+      // normal thing to want, so each chip toggles its own membership in
+      // the list rather than replacing whatever was selected before.
       value: "cuisine",
       label: "Cuisine",
-      chips: RESTAURANT_CUISINES.map(({ value: cuisine, label }) => ({
-        key: cuisine,
-        label,
-        selected: current.cuisine === cuisine,
-        onToggle: () => update({ cuisine: current.cuisine === cuisine ? null : cuisine }),
-      })),
+      chips: RESTAURANT_CUISINES.map(({ value: cuisine, label }) => {
+        const selected = current.cuisine.includes(cuisine);
+        return {
+          key: cuisine,
+          label,
+          selected,
+          onToggle: () =>
+            update({
+              cuisine: selected
+                ? current.cuisine.filter((c) => c !== cuisine)
+                : [...current.cuisine, cuisine],
+            }),
+        };
+      }),
     },
     {
       value: "price",

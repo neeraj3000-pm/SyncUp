@@ -20,6 +20,7 @@ const SEARCH_FIELD_MASK = [
   "places.id",
   "places.displayName",
   "places.formattedAddress",
+  "places.primaryType",
   "places.primaryTypeDisplayName",
   "places.location",
   "places.photos",
@@ -37,6 +38,7 @@ interface PlacesResult {
   id: string;
   displayName?: { text: string };
   formattedAddress?: string;
+  primaryType?: string;
   primaryTypeDisplayName?: { text: string };
   location?: PlacesLatLng;
   photos?: { name: string }[];
@@ -90,25 +92,32 @@ const PRICE_LABELS: Record<string, string> = {
   PRICE_LEVEL_VERY_EXPENSIVE: "₹₹₹₹",
 };
 
-// Matched against a place's PRIMARY type — matching any of its types let a
-// hotel with a café inside show up under "Cafe". A few close neighbors per
-// cuisine keep that stricter match from thinning results out. Places has no
-// North/South Indian split, so "indian_restaurant" covers both.
+// Matched against a place's PRIMARY type (not just "any of its types") —
+// precise enough that a hotel's restaurant can still match "Indian" while a
+// hotel itself doesn't just because it also happens to serve coffee. A few
+// close neighbors per cuisine keep that stricter match from thinning results
+// out. Places has no North/South Indian split, so "indian_restaurant" covers
+// both; there's no "brewery" type either, so Breweries & Bars uses the two
+// closest real ones.
 const CUISINE_PLACE_TYPES: Record<RestaurantCuisineSlug, readonly string[]> = {
-  indian: ["indian_restaurant"],
+  // Google splits this into its own regional types, distinct from the
+  // generic "indian_restaurant" — missing them was quietly excluding a
+  // large share of real Indian restaurants from this filter.
+  indian: ["indian_restaurant", "north_indian_restaurant", "south_indian_restaurant"],
   chinese: ["chinese_restaurant"],
   italian: ["italian_restaurant", "pizza_restaurant"],
   cafe: ["cafe", "coffee_shop"],
   fast_food: ["fast_food_restaurant", "hamburger_restaurant", "sandwich_shop"],
   bakery: ["bakery", "dessert_shop", "dessert_restaurant", "ice_cream_shop"],
+  breweries_bars: ["bar", "brewery", "brewpub", "wine_bar"],
 };
 
-// Places' priceLevel enum has 4 steps; the picker offers 3 buckets, since
-// "Expensive" vs. "Very Expensive" is rarely a distinction anyone means.
-const PRICE_SLUG_LEVELS: Record<RestaurantPriceSlug, readonly string[]> = {
-  budget: ["PRICE_LEVEL_INEXPENSIVE"],
-  mid_range: ["PRICE_LEVEL_MODERATE"],
-  fine_dining: ["PRICE_LEVEL_EXPENSIVE", "PRICE_LEVEL_VERY_EXPENSIVE"],
+// Places' priceLevel enum maps one-to-one onto the picker's 4 buckets.
+const PRICE_SLUG_LEVELS: Record<RestaurantPriceSlug, string> = {
+  budget: "PRICE_LEVEL_INEXPENSIVE",
+  mid_range: "PRICE_LEVEL_MODERATE",
+  expensive: "PRICE_LEVEL_EXPENSIVE",
+  fine_dining: "PRICE_LEVEL_VERY_EXPENSIVE",
 };
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -229,17 +238,19 @@ const DEFAULT_RADIUS_M = 3000;
 const MAX_RADIUS_M = 50000;
 
 // Nearby Search (New)'s request body has no priceLevels/openNow fields at
-// all (only includedTypes/excludedTypes narrow what it searches for) — so
-// cuisine goes into the request itself, but price and open-now are applied
-// here, after the fetch, against fields the field mask already pulls back
-// for the card (rating/priceLevel/openNow). Text Search (New) does support
-// both server-side, but filtering post-fetch for it too keeps one code path
-// instead of two, and the result is identical either way.
-function matchesPriceAndOpenNow(place: PlacesResult, filter: RestaurantFilter | null): boolean {
+// all (only includedTypes narrows what it searches for), and Text Search
+// (New) only takes a single includedType — useless once more than one
+// cuisine is selected. So cuisine narrows the Nearby Search request itself
+// (a real win: Places does the filtering), but price, open-now, and
+// multi-cuisine Text Search are all applied here, after the fetch, against
+// fields the field mask already pulls back for the card.
+function matchesFilter(place: PlacesResult, filter: RestaurantFilter | null): boolean {
   if (!filter) return true;
-  if (filter.price && !PRICE_SLUG_LEVELS[filter.price].includes(place.priceLevel ?? "")) {
-    return false;
+  if (filter.cuisine.length > 0) {
+    const allowedTypes = filter.cuisine.flatMap((c) => CUISINE_PLACE_TYPES[c]);
+    if (!place.primaryType || !allowedTypes.includes(place.primaryType)) return false;
   }
+  if (filter.price && place.priceLevel !== PRICE_SLUG_LEVELS[filter.price]) return false;
   if (filter.openNow && place.currentOpeningHours?.openNow !== true) return false;
   return true;
 }
@@ -259,13 +270,19 @@ const TEXT_QUERY_VARIANTS = [
 
 const RESULTS_PER_BATCH = 20;
 
-export async function getRestaurantPool(
+// The actual Places call + post-filter, shared by getRestaurantPool (which
+// goes on to resolve a photo per result) and previewRestaurantCount (which
+// only needs how many matched, so it skips that entirely — the expensive
+// part of a real pool generation).
+async function searchAndFilter(
   location: RestaurantLocation,
   batchNumber: number,
-  filter: RestaurantFilter | null = null,
-): Promise<NormalizedItem[]> {
+  filter: RestaurantFilter | null,
+): Promise<PlacesResult[]> {
   const isCoords = "lat" in location;
-  const cuisineTypes = filter?.cuisine ? CUISINE_PLACE_TYPES[filter.cuisine] : null;
+  const cuisineTypes = filter?.cuisine.length
+    ? Array.from(new Set(filter.cuisine.flatMap((c) => CUISINE_PLACE_TYPES[c])))
+    : null;
   // The Distance tab's own choice takes priority as the starting radius;
   // "Show Me More" batches still widen it the same way as before, just from
   // whatever base the person actually asked for instead of always 3km.
@@ -274,7 +291,8 @@ export async function getRestaurantPool(
   const response = isCoords
     ? await placesSearch<PlacesSearchResponse>("/places:searchNearby", {
         // Unfiltered, any place of type "restaurant" qualifies, which also
-        // covers every specific cuisine type.
+        // covers every specific cuisine type. includedPrimaryTypes takes an
+        // array natively, so every selected cuisine narrows this one call.
         ...(cuisineTypes
           ? { includedPrimaryTypes: cuisineTypes }
           : { includedTypes: ["restaurant"] }),
@@ -290,13 +308,18 @@ export async function getRestaurantPool(
     : await placesSearch<PlacesSearchResponse>("/places:searchText", {
         textQuery: `${TEXT_QUERY_VARIANTS[(batchNumber - 1) % TEXT_QUERY_VARIANTS.length]} in ${location.label}`,
         pageSize: RESULTS_PER_BATCH,
-        // Text Search takes a single type; strict filtering drops loose matches.
-        ...(cuisineTypes && { includedType: cuisineTypes[0], strictTypeFiltering: true }),
       });
 
-  const places = (response.places ?? []).filter(
-    (p) => p.displayName?.text && matchesPriceAndOpenNow(p, filter),
-  );
+  return (response.places ?? []).filter((p) => p.displayName?.text && matchesFilter(p, filter));
+}
+
+export async function getRestaurantPool(
+  location: RestaurantLocation,
+  batchNumber: number,
+  filter: RestaurantFilter | null = null,
+): Promise<NormalizedItem[]> {
+  const isCoords = "lat" in location;
+  const places = await searchAndFilter(location, batchNumber, filter);
 
   const imageUrls = await Promise.all(
     places.map((p) => (p.photos?.[0] ? resolvePhotoUrl(p.photos[0].name) : null)),
@@ -311,4 +334,18 @@ export async function getRestaurantPool(
         : null,
     ),
   );
+}
+
+// Lets the host see roughly how many restaurants a filter combination
+// matches before starting the session — narrow filters (several cuisines
+// plus Open Now plus a tight radius) can otherwise leave almost nothing to
+// swipe on. Only ever reads the first batch (same as what the session will
+// actually open with) and skips photo resolution, so this is cheap enough
+// to call on every filter change.
+export async function previewRestaurantCount(
+  location: RestaurantLocation,
+  filter: RestaurantFilter | null,
+): Promise<number> {
+  const places = await searchAndFilter(location, 1, filter);
+  return places.length;
 }
