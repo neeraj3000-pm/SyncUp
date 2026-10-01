@@ -235,7 +235,11 @@ export function SwipeDeck({
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <div className="w-full min-h-0 flex-1 overflow-y-auto overscroll-contain">{progressList}</div>
+      {/* Capped, same as the other two branches below — the parent region
+          now scrolls as a whole (SessionRoom), so this doesn't need its
+          own flex-1 "fill the leftover space" sizing, just a sane cap for
+          a full 10-person group. */}
+      <div className="w-full max-h-48 overflow-y-auto overscroll-contain">{progressList}</div>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { EatIcon, WatchIcon } from "@/components/icons/CategoryIcons";
 import { EMPTY_LOCATION, LocationPicker, type LocationValue } from "@/components/LocationPicker";
 import { MovieFilterPicker } from "@/components/MovieFilterPicker";
 import { RestaurantFilterPicker } from "@/components/RestaurantFilterPicker";
+import { RestaurantMatchCount } from "@/components/RestaurantMatchCount";
 
 const CATEGORIES = [
   { value: "WATCH", Icon: WatchIcon, label: "Watch", helper: "Movies and more" },
@@ -139,6 +140,7 @@ function CreateForm() {
                 onChange={setRestaurantFilter}
                 hasCoords={location.coords !== null}
               />
+              <RestaurantMatchCount location={location} filter={restaurantFilter} />
             </section>
           )}
 

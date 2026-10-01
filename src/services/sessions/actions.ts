@@ -13,13 +13,7 @@ import {
   type SessionRow,
 } from "@/services/sessions";
 import { isValidMovieFilter, type MovieFilter } from "@/services/movies/filters";
-import {
-  RESTAURANT_CUISINES,
-  RESTAURANT_DISTANCES_KM,
-  RESTAURANT_PRICES,
-  isEmptyRestaurantFilter,
-  type RestaurantFilter,
-} from "@/services/restaurants/filters";
+import { normalizeRestaurantFilter } from "@/services/restaurants/filters";
 
 // Server Actions are reachable by direct POST request, not just from our
 // own UI, so every input is validated here rather than trusted.
@@ -66,38 +60,6 @@ function normalizeMovieFilter(raw: unknown): MovieFilter | null | "invalid" {
   return { kind: raw.kind, value: raw.value } as MovieFilter;
 }
 
-// Each field is optional and validated on its own, since these are
-// independent axes rather than one tagged choice like MovieFilter.
-function isAllowed(value: unknown, allowed: readonly unknown[]): boolean {
-  return value === null || value === undefined || allowed.includes(value);
-}
-
-const CUISINE_VALUES = RESTAURANT_CUISINES.map((o) => o.value);
-const PRICE_VALUES = RESTAURANT_PRICES.map((o) => o.value);
-
-function normalizeRestaurantFilter(raw: unknown): RestaurantFilter | null | "invalid" {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw !== "object") return "invalid";
-  const { cuisine, price, openNow, distanceKm } = raw as Record<string, unknown>;
-
-  if (
-    !isAllowed(cuisine, CUISINE_VALUES) ||
-    !isAllowed(price, PRICE_VALUES) ||
-    !isAllowed(distanceKm, RESTAURANT_DISTANCES_KM) ||
-    (openNow !== undefined && typeof openNow !== "boolean")
-  ) {
-    return "invalid";
-  }
-
-  const filter: RestaurantFilter = {
-    cuisine: (cuisine as RestaurantFilter["cuisine"]) ?? null,
-    price: (price as RestaurantFilter["price"]) ?? null,
-    openNow: openNow === true,
-    distanceKm: (distanceKm as number | undefined) ?? null,
-  };
-  // "No filter" is stored one way (null), never as an all-defaults object.
-  return isEmptyRestaurantFilter(filter) ? null : filter;
-}
 
 function isLatitude(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 90;
