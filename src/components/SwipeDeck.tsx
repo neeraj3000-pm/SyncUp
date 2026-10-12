@@ -17,6 +17,7 @@ import { DecisionCard } from "@/components/DecisionCard";
 import { MovieCard } from "@/components/MovieCard";
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { SwipeProgress } from "@/components/SwipeProgress";
+import { track } from "@/lib/analytics";
 
 const PROGRESS_POLL_MS = 4000;
 // Matches DecisionCard's fling — the queue advances once the outgoing card
@@ -61,6 +62,10 @@ export function SwipeDeck({
   const [error, setError] = useState<string | null>(null);
   const [revealPromptDismissed, setRevealPromptDismissed] = useState(false);
   const advancingRef = useRef(false);
+  // Guards "batch_completed" against firing on every re-render while
+  // queue.length stays 0 — keyed on items.length so a fresh batch pulled in
+  // via "Show Me 50 More" can still fire it again once that one's exhausted.
+  const batchCompletedForRef = useRef<number | null>(null);
 
   // Resume support: skip whatever this participant already swiped (after a
   // refresh or rejoin). Re-runs when "Show Me More" replaces `items`;
@@ -76,6 +81,16 @@ export function SwipeDeck({
       cancelled = true;
     };
   }, [items, sessionId, participantId]);
+
+  // The current batch (initial 50, or the next 50 from "Show Me More") has
+  // been fully swiped through.
+  useEffect(() => {
+    if (queue === null || queue.length !== 0 || batchCompletedForRef.current === items.length) {
+      return;
+    }
+    batchCompletedForRef.current = items.length;
+    track("batch_completed", { session_id: sessionId, category, items_seen: items.length });
+  }, [queue, items.length, sessionId, category]);
 
   // Swipes can't go over Realtime without leaking individual choices, so
   // the aggregate-only session_progress() RPC is polled instead.
@@ -94,6 +109,7 @@ export function SwipeDeck({
     if (advancingRef.current) return;
     advancingRef.current = true;
     setError(null);
+    track("swipe_recorded", { session_id: sessionId, category, direction, super_liked: superLiked });
 
     swipeAction({ sessionId, participantId, itemId: item.id, direction, superLiked }).then(
       (result) => {
@@ -133,6 +149,7 @@ export function SwipeDeck({
     // to retry from, so a silent failure would strand someone there.
     setFinished(true);
     setError(null);
+    track("participant_finished", { session_id: sessionId, category });
     const result = await markFinishedAction(participantId);
     if (!result.ok) {
       setFinished(false);

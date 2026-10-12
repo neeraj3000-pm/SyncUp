@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ActionResult } from "@/lib/action-result";
 import { joinParts } from "@/lib/format";
 import { buttonPrimary, buttonSecondary } from "@/lib/ui";
+import { track } from "@/lib/analytics";
 import { Sheet } from "@/components/Sheet";
 import type { ItemRow } from "@/services/candidates";
 import { getMovieDetailAction } from "@/services/movies/actions";
@@ -18,9 +19,9 @@ export function DetailSheet({ item, onClose }: { item: ItemRow; onClose: () => v
   return (
     <Sheet onClose={onClose} title={item.title}>
       {item.category === "WATCH" ? (
-        <MovieDetailContent externalId={item.external_id} />
+        <MovieDetailContent externalId={item.external_id} category={item.category} />
       ) : (
-        <RestaurantDetailContent externalId={item.external_id} />
+        <RestaurantDetailContent externalId={item.external_id} category={item.category} />
       )}
     </Sheet>
   );
@@ -58,10 +59,16 @@ function LoadingOrError({ state }: { state: LoadState<unknown> }) {
 function ExternalLink({
   href,
   primary,
+  action,
+  category,
   children,
 }: {
   href: string;
   primary?: boolean;
+  // Which action this link represents, for the action_clicked event —
+  // omitted entirely (no onClick at all) when there's nothing to track.
+  action?: string;
+  category?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -69,6 +76,7 @@ function ExternalLink({
       href={href}
       target="_blank"
       rel="noreferrer"
+      onClick={action ? () => track("action_clicked", { category, action }) : undefined}
       className={`w-full ${primary ? buttonPrimary : buttonSecondary}`}
     >
       {children}
@@ -76,7 +84,13 @@ function ExternalLink({
   );
 }
 
-function MovieDetailContent({ externalId }: { externalId: string }) {
+function MovieDetailContent({
+  externalId,
+  category,
+}: {
+  externalId: string;
+  category: string;
+}) {
   const state = useDetail<MovieDetail>(getMovieDetailAction, externalId);
   if (state.status !== "ready") return <LoadingOrError state={state} />;
   const detail = state.data;
@@ -122,6 +136,7 @@ function MovieDetailContent({ externalId }: { externalId: string }) {
           href={detail.trailerUrl}
           target="_blank"
           rel="noreferrer"
+          onClick={() => track("action_clicked", { category, action: "trailer" })}
           className="text-sm font-semibold text-primary underline underline-offset-2"
         >
           Watch Trailer
@@ -144,7 +159,7 @@ function MovieDetailContent({ externalId }: { externalId: string }) {
           </div>
         )}
         {detail.streaming.link ? (
-          <ExternalLink href={detail.streaming.link} primary>
+          <ExternalLink href={detail.streaming.link} primary action="watch" category={category}>
             View Options
           </ExternalLink>
         ) : (
@@ -155,7 +170,13 @@ function MovieDetailContent({ externalId }: { externalId: string }) {
   );
 }
 
-function RestaurantDetailContent({ externalId }: { externalId: string }) {
+function RestaurantDetailContent({
+  externalId,
+  category,
+}: {
+  externalId: string;
+  category: string;
+}) {
   const state = useDetail<RestaurantDetail>(getRestaurantDetailAction, externalId);
   if (state.status !== "ready") return <LoadingOrError state={state} />;
   const detail = state.data;
@@ -195,9 +216,13 @@ function RestaurantDetailContent({ externalId }: { externalId: string }) {
       </div>
 
       <div className="flex flex-col gap-2">
-        {detail.mapUrl && <ExternalLink href={detail.mapUrl}>View on Map</ExternalLink>}
+        {detail.mapUrl && (
+          <ExternalLink href={detail.mapUrl} action="map" category={category}>
+            View on Map
+          </ExternalLink>
+        )}
         {detail.websiteUrl ? (
-          <ExternalLink href={detail.websiteUrl} primary>
+          <ExternalLink href={detail.websiteUrl} primary action="website" category={category}>
             Visit Website
           </ExternalLink>
         ) : (

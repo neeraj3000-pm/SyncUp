@@ -25,6 +25,7 @@ import { ParticipantList } from "@/components/ParticipantList";
 import { SessionTimer } from "@/components/SessionTimer";
 import { SwipeDeck } from "@/components/SwipeDeck";
 import { CategoryLabel } from "@/components/CategoryLabel";
+import { track } from "@/lib/analytics";
 
 const MIN_TO_START = 2;
 const POLL_MS = 4000;
@@ -73,9 +74,26 @@ export function SessionRoom({
   // system clock) — measured once against the timestamp the server captured
   // when rendering this page, so the countdown doesn't lie.
   const [clockOffsetMs] = useState(() => new Date(serverNow).getTime() - Date.now());
+  // Fires once, only for the creator (they're the one who "generated" it) —
+  // this effect can re-run on every participants/timer poll, so a ref
+  // guards it rather than relying on the dependency array alone.
+  const inviteTrackedRef = useRef(false);
 
   const isWaiting = session.status === "WAITING";
   const isActive = session.status === "ACTIVE";
+
+  useEffect(() => {
+    if (
+      inviteTrackedRef.current ||
+      session.status !== "WAITING" ||
+      !myGuestId ||
+      myGuestId !== session.creator_guest_id
+    ) {
+      return;
+    }
+    inviteTrackedRef.current = true;
+    track("invite_generated", { session_id: session.id, category: session.category });
+  }, [session.status, session.id, session.category, session.creator_guest_id, myGuestId]);
 
   // PRD section 31: once complete, everyone moves to the reveal with no
   // action required.
@@ -245,6 +263,11 @@ export function SessionRoom({
       setStartError(result.error);
       return;
     }
+    track("session_started", {
+      session_id: session.id,
+      category: session.category,
+      participant_count: participants.length,
+    });
     setSession((prev) => latest(prev, result.data));
   }
 
