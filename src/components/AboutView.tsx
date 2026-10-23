@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion, useReducedMotion } from "motion/react";
 import { CardFanHero } from "@/components/CardFanHero";
 import { TrackedLink } from "@/components/TrackedLink";
@@ -105,7 +106,7 @@ export function AboutView() {
       <section className={`relative ${sectionInner} px-6 pb-14 pt-20 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:px-10 lg:pt-28`}>
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-foreground-muted">
-            A proof-of-work project by Neeraj P
+            A side project by Neeraj P
           </p>
 
           <div className="lg:hidden">
@@ -224,61 +225,73 @@ export function AboutView() {
         variants={container}
         className="relative border-t border-border bg-surface px-6 py-14 lg:px-10"
       >
-        <div className={sectionInner}>
-          <motion.div variants={fadeUp} className="text-center">
-            <Eyebrow>Why I built this</Eyebrow>
-            <h2 className="mt-2 text-2xl font-extrabold tracking-tight lg:text-3xl">
-              A PM who ships, not just specs
-            </h2>
-          </motion.div>
+        <div className={`${sectionInner} lg:grid lg:grid-cols-2 lg:items-start lg:gap-16`}>
+          <div>
+            <motion.div variants={fadeUp} className="text-center lg:text-left">
+              <Eyebrow>Why I built this</Eyebrow>
+              <h2 className="mt-2 text-2xl font-extrabold tracking-tight lg:text-3xl">
+                Built to settle one argument
+              </h2>
+            </motion.div>
 
-          <motion.div variants={fadeUp} className="mx-auto mt-8 max-w-xl text-left text-foreground-muted lg:mx-0 lg:max-w-2xl">
-            <p>
-              I&apos;m Neeraj, a Product Manager at Planetcast Media Services. Most of my work
-              lives in decks and roadmaps — this is the opposite of that, on purpose.
-            </p>
-            <p className="mt-4">
-              I wanted a piece of proof-of-work I could actually hand someone and say &quot;open
-              this on your phone,&quot; not just talk them through a case study. So I picked a
-              problem I run into constantly — the fifteen minutes a group spends agreeing on
-              dinner — and owned it end to end: the product thinking, the data model, the
-              interface, and shipping it live.
-            </p>
-            <p className="mt-4">
-              I built it working closely with Claude Code, learning git and deployment as I went.
-              This page, and the app behind it, is what that looked like.
-            </p>
-          </motion.div>
+            <motion.div variants={fadeUp} className="mt-6 flex justify-center lg:hidden">
+              <PhoneFrame src="/screenshots/home.png" className="h-[300px] w-[164px]" />
+            </motion.div>
 
-          <motion.div
-            variants={fadeUp}
-            className="mx-auto mt-10 grid max-w-xl grid-cols-2 gap-4 lg:mx-0 lg:max-w-2xl lg:grid-cols-4"
-          >
-            {STATS.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-card border border-border bg-background px-4 py-4 shadow-chip"
-              >
-                <p className="font-mono text-2xl font-extrabold text-primary">{stat.value}</p>
-                <p className="mt-1 text-xs text-foreground-muted">{stat.label}</p>
-              </div>
-            ))}
-          </motion.div>
+            <motion.div variants={fadeUp} className="mx-auto mt-8 max-w-xl text-left text-foreground-muted lg:mx-0">
+              <p>
+                The real reason I built this: my wife and I could never agree on where to eat or
+                what to watch. Every night turned into the same &quot;I don&apos;t know, you
+                pick&quot; — so I built something to settle it for us. Everyone swipes on the same
+                options, privately, and whoever agrees the most wins. No more back-and-forth.
+              </p>
+              <p className="mt-4">
+                It worked so well that I realized this is a problem basically every group has —
+                roommates, friends, family trips — so I extended it to handle groups of up to 10,
+                not just couples.
+              </p>
+              <p className="mt-4">
+                Built with Claude Code and shipped through GitHub, running on Supabase with
+                real-time sync, and wired up with PostHog to see how people actually use it. Next
+                up: getting it onto the App Store and Google Play so it can help more people
+                decide, not just us.
+              </p>
+            </motion.div>
 
-          <motion.div variants={fadeUp} className="mx-auto mt-10 max-w-xl lg:mx-0 lg:max-w-2xl">
-            <p className="font-mono text-xs font-semibold uppercase tracking-wide text-foreground-muted">
-              What&apos;s under the hood
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {STACK.map((tech) => (
-                <span
-                  key={tech}
-                  className="rounded-pill border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground-muted shadow-chip"
+            <motion.div
+              variants={fadeUp}
+              className="mx-auto mt-10 grid max-w-xl grid-cols-2 gap-4 lg:mx-0"
+            >
+              {STATS.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="rounded-card border border-border bg-background px-4 py-4 shadow-chip"
                 >
-                  {tech}
-                </span>
+                  <p className="font-mono text-2xl font-extrabold text-primary">{stat.value}</p>
+                  <p className="mt-1 text-xs text-foreground-muted">{stat.label}</p>
+                </div>
               ))}
-            </div>
+            </motion.div>
+
+            <motion.div variants={fadeUp} className="mx-auto mt-10 max-w-xl lg:mx-0">
+              <p className="font-mono text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+                What&apos;s under the hood
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {STACK.map((tech) => (
+                  <span
+                    key={tech}
+                    className="rounded-pill border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground-muted shadow-chip"
+                  >
+                    {tech}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+
+          <motion.div variants={fadeUp} className="relative mt-12 hidden items-start justify-center lg:flex">
+            <PhoneFrame src="/screenshots/home.png" className="h-[460px] w-[252px]" />
           </motion.div>
         </div>
       </motion.section>
@@ -365,6 +378,18 @@ function PhonePreview() {
         </p>
         <p className="text-2xl font-extrabold text-sync">92%</p>
       </div>
+    </div>
+  );
+}
+
+// A real screenshot of the live app (not a mockup), in the same phone-bezel
+// treatment as PhonePreview above — "here's the actual thing," not just a
+// stylized illustration.
+function PhoneFrame({ src, className }: { src: string; className: string }) {
+  return (
+    <div className={`relative overflow-hidden rounded-[2.5rem] border-[6px] border-foreground bg-surface shadow-card ${className}`}>
+      <Image src={src} alt="SyncUp home screen" fill sizes="252px" className="object-cover object-top" />
+      <div className="pointer-events-none absolute left-1/2 top-3 h-1.5 w-16 -translate-x-1/2 rounded-pill bg-foreground/70" />
     </div>
   );
 }
