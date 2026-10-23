@@ -312,16 +312,17 @@ export function AboutView() {
             </h2>
           </motion.div>
           <motion.p variants={fadeUp} className="mx-auto mt-3 max-w-sm text-foreground-muted">
-            SyncUp already installs like an app straight from your browser. A native release on
-            the app stores is next.
+            You can use SyncUp right now, free, straight from your browser — install it like an
+            app in two taps, no store needed. Native App Store and Google Play versions are on
+            the way.
           </motion.p>
 
           <motion.div
             variants={fadeUp}
-            className="mx-auto mt-8 flex max-w-sm flex-col items-center gap-7 sm:flex-row sm:justify-center sm:gap-10 lg:max-w-md"
+            className="mx-auto mt-8 flex max-w-sm flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-6 lg:max-w-md"
           >
-            <StoreBadge src="/badges/app-store.png" alt="Download on the App Store" width={504} height={185} />
-            <StoreBadge src="/badges/google-play.png" alt="Get it on Google Play" width={567} height={185} />
+            <StoreBadge src="/badges/app-store.png" alt="Coming soon to the App Store" width={700} height={225} />
+            <StoreBadge src="/badges/google-play.png" alt="Get it on Google Play" width={494} height={158} />
           </motion.div>
         </div>
       </motion.section>
@@ -414,6 +415,9 @@ function CheckIcon() {
 // guideline artwork), shown unmodified — "Coming soon" is our own label
 // sitting above each one, never drawn onto the badge itself, since both
 // Apple's and Google's brand guidelines require the mark to stay as-is.
+// Each badge image is self-describing (the Apple one already says "Coming
+// Soon to the App Store" baked into the artwork, and the surrounding
+// paragraph covers Google Play) — no extra label wrapper needed here.
 function StoreBadge({
   src,
   alt,
@@ -425,12 +429,5 @@ function StoreBadge({
   width: number;
   height: number;
 }) {
-  return (
-    <div aria-disabled="true" className="flex flex-col items-center gap-2">
-      <span className="rounded-pill bg-background px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-foreground-muted shadow-chip">
-        Coming soon
-      </span>
-      <Image src={src} alt={alt} width={width} height={height} className="h-[52px] w-auto opacity-90" />
-    </div>
-  );
+  return <Image src={src} alt={alt} width={width} height={height} className="h-[56px] w-auto" />;
 }
