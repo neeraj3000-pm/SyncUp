@@ -1,46 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useInstallPrompt } from "@/lib/use-install-prompt";
 
 const STORAGE_KEY = "syncup-install-prompt-seen";
-
-// The one accepted exception to "media queries over capability, not user-
-// agent sniffing" (mobile-native skill): there's no feature-detectable way
-// to ask "can this browser manually add to home screen" — iOS Safari never
-// fires beforeinstallprompt and has no programmatic install path at all,
-// so telling it apart from a browser that might still fire that event
-// genuinely requires checking the UA. Even web.dev's own PWA-install guide
-// does this for the same reason.
-//
-// Matching just "is this an iPhone/iPad" isn't enough, though — Apple
-// requires every iOS browser to run on its engine, but each still ships
-// its own thin UI on top, and only Safari's own Share sheet has a real,
-// manifest-aware "Add to Home Screen." Chrome/Firefox/Edge/Opera on iOS
-// each carry their own UA token specifically so this can be told apart;
-// without ruling them out, Chrome-on-iPad got sent through the same
-// "tap Share, then Add to Home Screen" instructions as real Safari, for
-// a Share sheet that doesn't have that option.
-function iosBrowserKind(): "safari" | "other" | null {
-  if (typeof navigator === "undefined") return null;
-  const ua = navigator.userAgent;
-  if (!/iPad|iPhone|iPod/.test(ua)) return null;
-  return /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? "other" : "safari";
-}
-
-function isStandalone() {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    // iOS's own non-standard flag for "launched from the home screen" —
-    // matchMedia above doesn't cover it there.
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
-}
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
 
 // PRD's "frictionless, no nagging" principle applied to installs: shown
 // once, at the first genuinely meaningful moment (finishing a first
@@ -52,52 +15,25 @@ type BeforeInstallPromptEvent = Event & {
 // toward it, and the one substitute for that native affordance on iOS,
 // which has none at all.
 export function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  // Starts hidden and only reveals itself once the mount effect below
-  // confirms it's actually eligible — avoids a flash of the banner before
-  // the localStorage/standalone checks (both synchronous, but still after
-  // first paint) have run. One combined object, not several separate
-  // fields, so the eligibility check below is a single setState call
-  // rather than several cascading ones.
-  const [status, setStatus] = useState<{
-    eligible: boolean;
-    ios: "safari" | "other" | null;
-  }>({ eligible: false, ios: null });
+  const { platform, standalone, promptInstall } = useInstallPrompt();
+  const [dismissed, setDismissed] = useState(true);
 
   useEffect(() => {
-    if (isStandalone()) return;
+    if (standalone) return;
     if (window.localStorage.getItem(STORAGE_KEY)) return;
-
-    // Deliberate exception to "don't setState in an effect": both checks
-    // read browser-only APIs (matchMedia, navigator.userAgent,
-    // localStorage) that don't exist during SSR, so this can't be a
-    // useState initializer without crashing server-side — same pattern
-    // ThemeToggle uses for the same reason.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStatus({ eligible: true, ios: iosBrowserKind() });
-
-    function handleBeforeInstallPrompt(e: Event) {
-      // Stops Chrome's own mini-infobar from appearing behind this —
-      // without it, our banner and the browser's would both show up.
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-    }
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-  }, []);
+    setDismissed(false);
+  }, [standalone]);
 
   function dismiss() {
-    setStatus({ eligible: false, ios: null });
+    setDismissed(true);
     window.localStorage.setItem(STORAGE_KEY, "1");
   }
 
   async function handleInstallClick() {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    // Dismiss either way once they've answered the real system dialog —
-    // this banner's job (surfacing the option once) is done regardless of
-    // which way they went.
-    await deferredPrompt.userChoice;
+    await promptInstall();
+    // This banner's job (surfacing the option once) is done once they've
+    // answered the real system dialog, regardless of which way they went.
     dismiss();
   }
 
@@ -105,7 +41,7 @@ export function InstallPrompt() {
   // version once eligible) and Chrome hasn't handed over a real prompt
   // yet — showing an "Install" button with nothing behind it would be
   // worse than not showing the banner at all.
-  if (!status.eligible || (!status.ios && !deferredPrompt)) return null;
+  if (dismissed || !platform || platform === "other") return null;
 
   return (
     <div className="flex w-full items-center gap-3 rounded-card border border-border bg-surface-raised px-4 py-3 shadow-card">
@@ -114,14 +50,14 @@ export function InstallPrompt() {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold leading-tight">Add SyncUp to your home screen</p>
         <p className="text-xs text-foreground-muted">
-          {status.ios === "safari"
+          {platform === "ios-safari"
             ? 'Tap the Share icon, then "Add to Home Screen."'
-            : status.ios === "other"
+            : platform === "ios-other"
               ? "Open this link in Safari to add it to your home screen."
               : "One tap next time — no browser tab needed."}
         </p>
       </div>
-      {!status.ios && (
+      {platform === "promptable" && (
         <button
           type="button"
           onClick={handleInstallClick}

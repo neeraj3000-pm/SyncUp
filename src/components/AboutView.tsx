@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { CardFanHero } from "@/components/CardFanHero";
 import { TrackedLink } from "@/components/TrackedLink";
 import { buttonPrimary, buttonSecondary } from "@/lib/ui";
+import { useInstallPrompt } from "@/lib/use-install-prompt";
 
 // Same "safe house style" as ResultsView's reveal cascade: critically
 // damped spring, no bounce, a short stagger between siblings. Reduced
@@ -312,17 +313,17 @@ export function AboutView() {
             </h2>
           </motion.div>
           <motion.p variants={fadeUp} className="mx-auto mt-3 max-w-sm text-foreground-muted">
-            You can use SyncUp right now, free, straight from your browser — install it like an
-            app in two taps, no store needed. Native App Store and Google Play versions are on
-            the way.
+            You can use SyncUp right now, free, straight from your browser. Native App Store and
+            Google Play versions are on the way.
           </motion.p>
 
           <motion.div
             variants={fadeUp}
-            className="mx-auto mt-8 flex max-w-sm flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-6 lg:max-w-md"
+            className="mx-auto mt-8 flex max-w-sm flex-col items-center gap-5 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-6 lg:max-w-xl"
           >
-            <StoreBadge src="/badges/app-store.png" alt="Coming soon to the App Store" width={700} height={225} />
-            <StoreBadge src="/badges/google-play.png" alt="Get it on Google Play" width={494} height={158} />
+            <WebAppBadge />
+            <StoreBadge src="/badges/app-store.png" alt="Coming soon to the App Store" />
+            <StoreBadge src="/badges/google-play.png" alt="Get it on Google Play" />
           </motion.div>
         </div>
       </motion.section>
@@ -411,23 +412,59 @@ function CheckIcon() {
   );
 }
 
-// The real official badges (cropped from Apple's and Google's own usage-
-// guideline artwork), shown unmodified — "Coming soon" is our own label
-// sitting above each one, never drawn onto the badge itself, since both
-// Apple's and Google's brand guidelines require the mark to stay as-is.
-// Each badge image is self-describing (the Apple one already says "Coming
-// Soon to the App Store" baked into the artwork, and the surrounding
-// paragraph covers Google Play) — no extra label wrapper needed here.
-function StoreBadge({
-  src,
-  alt,
-  width,
-  height,
-}: {
-  src: string;
-  alt: string;
-  width: number;
-  height: number;
-}) {
-  return <Image src={src} alt={alt} width={width} height={height} className="h-[56px] w-auto" />;
+// The real official badges (Apple's and Google's own artwork), shown
+// unmodified — each is self-describing (the Apple one already says
+// "Coming Soon to the App Store" baked into the artwork; the surrounding
+// paragraph covers Google Play), so no extra label wrapper is needed.
+// A fixed box with object-contain (rather than a fixed height + w-auto)
+// keeps both the same size regardless of their differing source aspect
+// ratios, so they read as a matched pair instead of Apple's badge just
+// happening to be wider.
+function StoreBadge({ src, alt }: { src: string; alt: string }) {
+  return (
+    <span className="relative block h-14 w-[172px]">
+      <Image src={src} alt={alt} fill sizes="172px" className="object-contain" />
+    </span>
+  );
+}
+
+// The one option here that actually works today — no store, no install
+// step beyond what the platform itself supports. Chrome/Edge/Android get
+// a real "Install" button via the shared beforeinstallprompt capture;
+// iOS Safari has no such API (see use-install-prompt.ts) so it gets
+// instructions instead; everything else falls back to just opening the
+// app, where the browser's own install affordance (if any) still applies.
+function WebAppBadge() {
+  const { platform, promptInstall } = useInstallPrompt();
+
+  const card = (
+    <span className="flex h-14 w-[172px] flex-col items-center justify-center rounded-xl border border-border bg-surface px-3 text-center shadow-chip transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]">
+      <span className="text-xs font-semibold leading-tight">Install the web app</span>
+      <span className="mt-0.5 text-[10px] leading-tight text-foreground-muted">
+        {platform === "ios-safari"
+          ? 'Tap Share → "Add to Home Screen"'
+          : platform === "ios-other"
+            ? "Open in Safari to install"
+            : platform === "promptable"
+              ? "One tap, no store needed"
+              : "Free, right in your browser"}
+      </span>
+    </span>
+  );
+
+  if (!platform) return <span className="h-14 w-[172px]" aria-hidden />;
+
+  if (platform === "promptable") {
+    return (
+      <button type="button" onClick={promptInstall}>
+        {card}
+      </button>
+    );
+  }
+
+  return (
+    <TrackedLink href="/" event="start_clicked">
+      {card}
+    </TrackedLink>
+  );
 }
