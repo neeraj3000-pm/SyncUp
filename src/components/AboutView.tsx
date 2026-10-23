@@ -318,10 +318,10 @@ export function AboutView() {
 
           <motion.div
             variants={fadeUp}
-            className="mx-auto mt-8 flex max-w-sm flex-col gap-3 sm:flex-row sm:justify-center lg:max-w-md"
+            className="mx-auto mt-8 flex max-w-sm flex-col items-center gap-7 sm:flex-row sm:justify-center sm:gap-10 lg:max-w-md"
           >
-            <StoreBadge icon={<PhoneIcon />} store="App Store" />
-            <StoreBadge icon={<PlayIcon />} store="Google Play" />
+            <StoreBadge src="/badges/app-store.png" alt="Download on the App Store" width={504} height={185} />
+            <StoreBadge src="/badges/google-play.png" alt="Get it on Google Play" width={567} height={185} />
           </motion.div>
         </div>
       </motion.section>
@@ -410,37 +410,27 @@ function CheckIcon() {
   );
 }
 
-function StoreBadge({ icon, store }: { icon: React.ReactNode; store: string }) {
+// The real official badges (cropped from Apple's and Google's own usage-
+// guideline artwork), shown unmodified — "Coming soon" is our own label
+// sitting above each one, never drawn onto the badge itself, since both
+// Apple's and Google's brand guidelines require the mark to stay as-is.
+function StoreBadge({
+  src,
+  alt,
+  width,
+  height,
+}: {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+}) {
   return (
-    <div
-      aria-disabled="true"
-      className="flex flex-1 items-center justify-center gap-2.5 rounded-pill border border-border bg-surface px-5 py-3 text-foreground-muted shadow-chip"
-    >
-      <span aria-hidden className="flex-shrink-0">
-        {icon}
+    <div aria-disabled="true" className="flex flex-col items-center gap-2">
+      <span className="rounded-pill bg-background px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-foreground-muted shadow-chip">
+        Coming soon
       </span>
-      <span className="text-left leading-tight">
-        <span className="block text-[10px] font-medium uppercase tracking-wide">Coming soon</span>
-        <span className="block text-sm font-semibold text-foreground">{store}</span>
-      </span>
+      <Image src={src} alt={alt} width={width} height={height} className="h-[52px] w-auto opacity-90" />
     </div>
-  );
-}
-
-function PhoneIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="7" y="2" width="10" height="20" rx="2.5" stroke="currentColor" strokeWidth="1.75" />
-      <line x1="11" y1="18.5" x2="13" y2="18.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function PlayIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="currentColor" strokeWidth="1.75" />
-      <path d="M10 8.5v7l6-3.5-6-3.5z" fill="currentColor" />
-    </svg>
   );
 }
