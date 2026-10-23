@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { CardFanHero } from "@/components/CardFanHero";
+import { TrackedLink } from "@/components/TrackedLink";
 import { buttonPrimary, buttonSecondary } from "@/lib/ui";
 
 export default function LandingPage() {
@@ -30,21 +30,15 @@ export default function LandingPage() {
       </div>
 
       <div className="relative mt-6 flex w-full max-w-xs flex-col gap-4">
-        <Link
-          href="/create"
-          className={buttonPrimary}
-        >
+        <TrackedLink href="/create" event="start_clicked" className={buttonPrimary}>
           Start a SyncUp!
-        </Link>
+        </TrackedLink>
 
         <div className="flex flex-col gap-2">
           <p className="text-sm text-foreground-muted">Already have a code?</p>
-          <Link
-            href="/join"
-            className={buttonSecondary}
-          >
+          <TrackedLink href="/join" event="join_clicked" className={buttonSecondary}>
             Join a SyncUp!
-          </Link>
+          </TrackedLink>
         </div>
       </div>
 
