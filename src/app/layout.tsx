@@ -4,6 +4,7 @@ import { Manrope } from "next/font/google";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { Analytics } from "@/components/Analytics";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -84,6 +85,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           }}
         />
         {children}
+        <OfflineBanner />
         <ThemeToggle />
         <ServiceWorkerRegister />
         {/* Suspense keeps useSearchParams' static-rendering opt-out scoped
