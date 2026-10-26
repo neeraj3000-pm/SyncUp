@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { motion, useReducedMotion } from "motion/react";
+import { animate, motion, useReducedMotion } from "motion/react";
 import { CardFanHero } from "@/components/CardFanHero";
 import { TrackedLink } from "@/components/TrackedLink";
 import { buttonPrimary, buttonSecondary } from "@/lib/ui";
@@ -42,14 +43,14 @@ const STEPS = [
   },
   {
     label: "Reveal",
-    copy: "SyncUp ranks by agreement and shows the Sync Score. Highest match wins — nobody has to argue for it.",
+    copy: "Highest match wins, everybody wins!",
   },
 ] as const;
 
 const CHAT_BUBBLES = [
   { text: "what should we watch tonight", align: "left" as const },
-  { text: "idk you pick", align: "right" as const },
-  { text: "where should we eat", align: "left" as const },
+  { text: "idk you pick 😭", align: "right" as const },
+  { text: "Where do you wanna have dinner?", align: "left" as const },
   { text: "anywhere's fine 🙃", align: "right" as const },
 ];
 
@@ -60,7 +61,7 @@ const sectionInner = "mx-auto w-full max-w-5xl";
 
 const STATS = [
   { value: "2–10", label: "people per SyncUp" },
-  { value: "50", label: "items in the candidate pool" },
+  { value: "10s", label: "to start a SyncUp, no account" },
   { value: "16", label: "analytics events tracked" },
   { value: "100%", label: "Sync Score on a perfect match" },
 ] as const;
@@ -106,10 +107,6 @@ export function AboutView() {
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section className={`relative ${sectionInner} px-6 pb-14 pt-20 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:px-10 lg:pt-28`}>
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-foreground-muted">
-            A side project by Neeraj P
-          </p>
-
           <div className="lg:hidden">
             <CardFanHero />
           </div>
@@ -120,7 +117,7 @@ export function AboutView() {
             <span className="text-primary">SyncUp!</span>
           </h1>
           <p className="mt-4 max-w-sm text-lg text-foreground-muted lg:max-w-md">
-            The app for people who can never agree on what to watch or where to eat.
+            Swipe. Match. Stop arguing.
           </p>
 
           <div className="mt-8 flex w-full max-w-xs flex-col gap-3 lg:flex-row lg:max-w-none">
@@ -235,8 +232,8 @@ export function AboutView() {
               </h2>
             </motion.div>
 
-            <motion.div variants={fadeUp} className="mt-6 flex justify-center lg:hidden">
-              <PhoneFrame src="/screenshots/home.png" className="h-[300px] w-[164px]" />
+            <motion.div variants={fadeUp} className="mt-6 lg:hidden">
+              <PhoneFan size="small" />
             </motion.div>
 
             <motion.div variants={fadeUp} className="mx-auto mt-8 max-w-xl text-left text-foreground-muted lg:mx-0">
@@ -248,14 +245,14 @@ export function AboutView() {
               </p>
               <p className="mt-4">
                 It worked so well that I realized this is a problem basically every group has —
-                roommates, friends, family trips — so I extended it to handle groups of up to 10,
-                not just couples.
+                roommates, friends, family trips — so I extended this to handle friend groups as
+                well, up to 10 people at once, not just couples.
               </p>
               <p className="mt-4">
                 Built with Claude Code and shipped through GitHub, running on Supabase with
                 real-time sync, and wired up with PostHog to see how people actually use it. Next
-                up: getting it onto the App Store and Google Play so it can help more people
-                decide, not just us.
+                up: expanding beyond movies and restaurants to TV shows, vacations, and more —
+                plus getting SyncUp onto the App Store and Google Play.
               </p>
             </motion.div>
 
@@ -282,7 +279,7 @@ export function AboutView() {
                 {STACK.map((tech) => (
                   <span
                     key={tech}
-                    className="rounded-pill border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground-muted shadow-chip"
+                    className="rounded-pill border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground-muted shadow-chip transition-transform duration-150 ease-out hover:-translate-y-0.5 hover:text-foreground"
                   >
                     {tech}
                   </span>
@@ -291,8 +288,8 @@ export function AboutView() {
             </motion.div>
           </div>
 
-          <motion.div variants={fadeUp} className="relative mt-12 hidden items-start justify-center lg:flex">
-            <PhoneFrame src="/screenshots/home.png" className="h-[460px] w-[252px]" />
+          <motion.div variants={fadeUp} className="relative mt-12 hidden lg:block">
+            <PhoneFan size="large" />
           </motion.div>
         </div>
       </motion.section>
@@ -356,11 +353,11 @@ function PhonePreview() {
         <div className="absolute left-1/2 top-3 h-1.5 w-16 -translate-x-1/2 rounded-pill bg-foreground/70" />
 
         <div className="absolute inset-x-5 top-16 h-56 rotate-[-7deg] rounded-card border border-border bg-[#8d99ae]" />
-        <div className="absolute inset-x-5 top-14 flex h-60 flex-col justify-between rounded-card bg-primary p-4 text-white shadow-lg">
-          <div className="h-20 rounded-xl bg-white/20" />
-          <div>
-            <p className="text-sm font-semibold">The Last Heist</p>
-            <p className="text-xs text-white/80">Action · 2h 4m</p>
+        <div className="absolute inset-x-5 top-14 flex h-60 flex-col justify-between overflow-hidden rounded-card text-white shadow-lg">
+          <Image src="/posters/inception.jpg" alt="" fill aria-hidden sizes="190px" className="object-cover" />
+          <div className="relative mt-auto bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 pt-10">
+            <p className="text-sm font-semibold">Inception</p>
+            <p className="text-xs text-white/80">Sci-Fi, Action · 2h 28m</p>
           </div>
         </div>
 
@@ -374,24 +371,88 @@ function PhonePreview() {
         </div>
       </div>
 
-      <div className="absolute -right-8 top-8 rounded-2xl border border-border bg-surface px-4 py-3 shadow-card">
+      <div className="absolute -right-8 top-32 rounded-2xl border border-border bg-surface px-4 py-3 shadow-card">
         <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-foreground-muted">
           Sync Score
         </p>
-        <p className="text-2xl font-extrabold text-sync">92%</p>
+        <p className="text-2xl font-extrabold text-sync">
+          <CountUp to={92} />%
+        </p>
       </div>
     </div>
   );
 }
 
+// Counts up from 0 once mounted — a static "92%" read as placeholder
+// copy, whereas a number that visibly arrives reads as a real, live
+// result. Reduced motion skips straight to the final value.
+function CountUp({ to }: { to: number }) {
+  const reduceMotion = useReducedMotion();
+  const [value, setValue] = useState(reduceMotion ? to : 0);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const controls = animate(0, to, {
+      duration: 1.1,
+      delay: 0.3,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (v) => setValue(Math.round(v)),
+    });
+    return () => controls.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return <>{value}</>;
+}
+
 // A real screenshot of the live app (not a mockup), in the same phone-bezel
 // treatment as PhonePreview above — "here's the actual thing," not just a
 // stylized illustration.
-function PhoneFrame({ src, className }: { src: string; className: string }) {
+function PhoneFrame({
+  src,
+  alt,
+  className,
+  style,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  style?: React.CSSProperties;
+}) {
   return (
-    <div className={`relative overflow-hidden rounded-[2.5rem] border-[6px] border-foreground bg-surface shadow-card ${className}`}>
-      <Image src={src} alt="SyncUp home screen" fill sizes="252px" className="object-cover object-top" />
+    <div
+      style={style}
+      className={`overflow-hidden rounded-[2.5rem] border-[6px] border-foreground bg-surface shadow-card ${className}`}
+    >
+      <Image src={src} alt={alt} fill sizes="252px" className="object-cover object-top" />
       <div className="pointer-events-none absolute left-1/2 top-3 h-1.5 w-16 -translate-x-1/2 rounded-pill bg-foreground/70" />
+    </div>
+  );
+}
+
+// Two real screenshots fanned like CardFanHero's card stack — the landing
+// screen behind, the actual "YOU'RE SYNCED" reveal in front, so this
+// section shows the whole arc (open the app → get a real result) instead
+// of just the one screen a single frame could fit.
+function PhoneFan({ size }: { size: "small" | "large" }) {
+  const dims = size === "large" ? { h: 440, w: 240 } : { h: 280, w: 153 };
+  return (
+    <div
+      className="relative mx-auto"
+      style={{ height: dims.h + 28, width: dims.w + 56 }}
+    >
+      <PhoneFrame
+        src="/screenshots/home.png"
+        alt="SyncUp home screen"
+        className="absolute left-0 top-0 -rotate-6"
+        style={{ height: dims.h, width: dims.w }}
+      />
+      <PhoneFrame
+        src="/screenshots/results.jpg"
+        alt="SyncUp results screen showing a synced match"
+        className="absolute bottom-0 right-0 rotate-3"
+        style={{ height: dims.h, width: dims.w }}
+      />
     </div>
   );
 }
