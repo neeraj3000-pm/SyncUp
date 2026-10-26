@@ -17,10 +17,14 @@ export const metadata: Metadata = {
   description:
     "Swipe with the people you're with. SyncUp finds what everyone actually wants to watch or eat.",
   manifest: "/manifest.json",
-  // src/app/icon.png covers the regular favicon via Next's own file
-  // convention — only the iOS home-screen icon needs declaring by hand
-  // here, since it lives in public/ under a name iOS specifically expects.
+  // An explicit `icons` object here REPLACES Next's automatic file-based
+  // icon detection rather than merging with it — so src/app/icon.png's
+  // favicon link was silently missing from every page until `icon` was
+  // added below explicitly, alongside the iOS home-screen icon (which
+  // lives in public/ under a name iOS specifically expects, so it was
+  // never picked up by file convention regardless).
   icons: {
+    icon: "/icon.png",
     apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
