@@ -11,9 +11,13 @@ export default function LandingPage() {
           quiet secondary path to /about for anyone who wants the story
           behind the app rather than to start one. Mirrors /about's own
           "← Portfolio" pill in the same corner, so the two pages read as
-          reciprocal. */}
+          reciprocal. The ?src=app marker tells /about this visitor came
+          from inside the app, not from the portfolio — it hides the
+          portfolio links there, so someone the app was shared with (a
+          manager, a friend testing it) doesn't click straight through
+          to Neeraj's portfolio on their way out. */}
       <Link
-        href="/about"
+        href="/about?src=app"
         className="fixed left-4 z-40 flex h-11 items-center gap-1.5 rounded-pill border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-md transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
         style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
       >
@@ -31,7 +35,7 @@ export default function LandingPage() {
       />
 
       <Link
-        href="/about"
+        href="/about?src=app"
         aria-label="Learn more about SyncUp"
         className="rounded-2xl transition-[transform,opacity] duration-150 ease-out hover:opacity-80 active:scale-[0.97]"
       >
