@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { animate, motion, useReducedMotion } from "motion/react";
-import { CardFanHero } from "@/components/CardFanHero";
 import { TrackedLink } from "@/components/TrackedLink";
 import { buttonPrimary, buttonSecondary } from "@/lib/ui";
 import { useInstallPrompt } from "@/lib/use-install-prompt";
@@ -108,10 +107,10 @@ export function AboutView() {
       <section className={`relative ${sectionInner} px-6 pb-14 pt-20 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:px-10 lg:pt-28`}>
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <div className="lg:hidden">
-            <CardFanHero />
+            <PhonePreview />
           </div>
 
-          <h1 className="mt-2 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="mt-6 text-4xl font-extrabold tracking-tight sm:text-5xl lg:mt-2 lg:text-6xl">
             Stop debating.
             <br />
             <span className="text-primary">SyncUp!</span>
@@ -346,38 +345,47 @@ export function AboutView() {
 // tilted-stack-behind-the-top-card silhouette, the Sync/Pass pair) to read
 // as "this is the actual product" rather than generic hero art. Desktop
 // only: the hero's mobile layout already has CardFanHero for this slot.
+// Outer box reserves the actual (scaled-down) layout footprint on mobile;
+// the inner div holds the real markup at its native 230x420 size and is
+// visually scaled to fit via transform, so every offset inside it (the
+// poster, the floating chip, the button row) stays exactly in proportion
+// without hand-tuning a second set of measurements per breakpoint.
 function PhonePreview() {
   return (
-    <div className="relative">
-      <div className="relative h-[420px] w-[230px] overflow-hidden rounded-[2.5rem] border-[6px] border-foreground bg-surface shadow-card">
-        <div className="absolute left-1/2 top-3 h-1.5 w-16 -translate-x-1/2 rounded-pill bg-foreground/70" />
+    <div className="relative h-[280px] w-[153px] lg:h-[420px] lg:w-[230px]">
+      <div className="absolute left-0 top-0 origin-top-left scale-[0.665] lg:scale-100">
+        <div className="relative">
+          <div className="relative h-[420px] w-[230px] overflow-hidden rounded-[2.5rem] border-[6px] border-foreground bg-surface shadow-card">
+            <div className="absolute left-1/2 top-3 h-1.5 w-16 -translate-x-1/2 rounded-pill bg-foreground/70" />
 
-        <div className="absolute inset-x-5 top-16 h-56 rotate-[-7deg] rounded-card border border-border bg-[#8d99ae]" />
-        <div className="absolute inset-x-5 top-14 flex h-60 flex-col justify-between overflow-hidden rounded-card text-white shadow-lg">
-          <Image src="/posters/inception.jpg" alt="" fill aria-hidden sizes="190px" className="object-cover" />
-          <div className="relative mt-auto bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 pt-10">
-            <p className="text-sm font-semibold">Inception</p>
-            <p className="text-xs text-white/80">Sci-Fi, Action · 2h 28m</p>
+            <div className="absolute inset-x-5 top-16 h-56 rotate-[-7deg] rounded-card border border-border bg-[#8d99ae]" />
+            <div className="absolute inset-x-5 top-14 flex h-60 flex-col justify-between overflow-hidden rounded-card text-white shadow-lg">
+              <Image src="/posters/inception.jpg" alt="" fill aria-hidden sizes="190px" className="object-cover" />
+              <div className="relative mt-auto bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 pt-10">
+                <p className="text-sm font-semibold">Inception</p>
+                <p className="text-xs text-white/80">Sci-Fi, Action · 2h 28m</p>
+              </div>
+            </div>
+
+            <div className="absolute bottom-9 left-0 right-0 flex justify-center gap-5">
+              <span className="flex h-10 w-10 items-center justify-center rounded-pill border border-border bg-surface text-foreground-muted shadow-chip">
+                <CrossIcon />
+              </span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-pill bg-sync text-sync-foreground shadow-chip">
+                <CheckIcon />
+              </span>
+            </div>
+          </div>
+
+          <div className="absolute -right-8 top-32 rounded-2xl border border-border bg-surface px-4 py-3 shadow-card">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-foreground-muted">
+              Sync Score
+            </p>
+            <p className="text-2xl font-extrabold text-sync">
+              <CountUp to={92} />%
+            </p>
           </div>
         </div>
-
-        <div className="absolute bottom-9 left-0 right-0 flex justify-center gap-5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-pill border border-border bg-surface text-foreground-muted shadow-chip">
-            <CrossIcon />
-          </span>
-          <span className="flex h-10 w-10 items-center justify-center rounded-pill bg-sync text-sync-foreground shadow-chip">
-            <CheckIcon />
-          </span>
-        </div>
-      </div>
-
-      <div className="absolute -right-8 top-32 rounded-2xl border border-border bg-surface px-4 py-3 shadow-card">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-foreground-muted">
-          Sync Score
-        </p>
-        <p className="text-2xl font-extrabold text-sync">
-          <CountUp to={92} />%
-        </p>
       </div>
     </div>
   );
