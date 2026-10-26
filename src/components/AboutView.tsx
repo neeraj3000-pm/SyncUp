@@ -1,9 +1,11 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
-import { CardFanHero } from "@/components/CardFanHero";
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import { animate, motion, useReducedMotion } from "motion/react";
 import { TrackedLink } from "@/components/TrackedLink";
 import { buttonPrimary, buttonSecondary } from "@/lib/ui";
+import { useInstallPrompt } from "@/lib/use-install-prompt";
 
 // Same "safe house style" as ResultsView's reveal cascade: critically
 // damped spring, no bounce, a short stagger between siblings. Reduced
@@ -40,14 +42,14 @@ const STEPS = [
   },
   {
     label: "Reveal",
-    copy: "SyncUp ranks by agreement and shows the Sync Score. Highest match wins — nobody has to argue for it.",
+    copy: "Highest match wins, everybody wins!",
   },
 ] as const;
 
 const CHAT_BUBBLES = [
   { text: "what should we watch tonight", align: "left" as const },
-  { text: "idk you pick", align: "right" as const },
-  { text: "where should we eat", align: "left" as const },
+  { text: "idk you pick 😭", align: "right" as const },
+  { text: "Where do you wanna have dinner?", align: "left" as const },
   { text: "anywhere's fine 🙃", align: "right" as const },
 ];
 
@@ -58,7 +60,7 @@ const sectionInner = "mx-auto w-full max-w-5xl";
 
 const STATS = [
   { value: "2–10", label: "people per SyncUp" },
-  { value: "50", label: "items in the candidate pool" },
+  { value: "10s", label: "to start a SyncUp, no account" },
   { value: "16", label: "analytics events tracked" },
   { value: "100%", label: "Sync Score on a perfect match" },
 ] as const;
@@ -104,21 +106,17 @@ export function AboutView() {
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section className={`relative ${sectionInner} px-6 pb-14 pt-20 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:px-10 lg:pt-28`}>
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-foreground-muted">
-            A proof-of-work project by Neeraj P
-          </p>
-
           <div className="lg:hidden">
-            <CardFanHero />
+            <PhonePreview />
           </div>
 
-          <h1 className="mt-2 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="mt-6 text-4xl font-extrabold tracking-tight sm:text-5xl lg:mt-2 lg:text-6xl">
             Stop debating.
             <br />
             <span className="text-primary">SyncUp!</span>
           </h1>
           <p className="mt-4 max-w-sm text-lg text-foreground-muted lg:max-w-md">
-            The app for people who can never agree on what to watch or where to eat.
+            Swipe. Match. Stop arguing.
           </p>
 
           <div className="mt-8 flex w-full max-w-xs flex-col gap-3 lg:flex-row lg:max-w-none">
@@ -224,61 +222,73 @@ export function AboutView() {
         variants={container}
         className="relative border-t border-border bg-surface px-6 py-14 lg:px-10"
       >
-        <div className={sectionInner}>
-          <motion.div variants={fadeUp} className="text-center">
-            <Eyebrow>Why I built this</Eyebrow>
-            <h2 className="mt-2 text-2xl font-extrabold tracking-tight lg:text-3xl">
-              A PM who ships, not just specs
-            </h2>
-          </motion.div>
+        <div className={`${sectionInner} lg:grid lg:grid-cols-2 lg:items-start lg:gap-16`}>
+          <div>
+            <motion.div variants={fadeUp} className="text-center lg:text-left">
+              <Eyebrow>Why I built this</Eyebrow>
+              <h2 className="mt-2 text-2xl font-extrabold tracking-tight lg:text-3xl">
+                Built to settle one argument
+              </h2>
+            </motion.div>
 
-          <motion.div variants={fadeUp} className="mx-auto mt-8 max-w-xl text-left text-foreground-muted lg:mx-0 lg:max-w-2xl">
-            <p>
-              I&apos;m Neeraj, a Product Manager at Planetcast Media Services. Most of my work
-              lives in decks and roadmaps — this is the opposite of that, on purpose.
-            </p>
-            <p className="mt-4">
-              I wanted a piece of proof-of-work I could actually hand someone and say &quot;open
-              this on your phone,&quot; not just talk them through a case study. So I picked a
-              problem I run into constantly — the fifteen minutes a group spends agreeing on
-              dinner — and owned it end to end: the product thinking, the data model, the
-              interface, and shipping it live.
-            </p>
-            <p className="mt-4">
-              I built it working closely with Claude Code, learning git and deployment as I went.
-              This page, and the app behind it, is what that looked like.
-            </p>
-          </motion.div>
+            <motion.div variants={fadeUp} className="mt-6 lg:hidden">
+              <PhoneFan size="small" />
+            </motion.div>
 
-          <motion.div
-            variants={fadeUp}
-            className="mx-auto mt-10 grid max-w-xl grid-cols-2 gap-4 lg:mx-0 lg:max-w-2xl lg:grid-cols-4"
-          >
-            {STATS.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-card border border-border bg-background px-4 py-4 shadow-chip"
-              >
-                <p className="font-mono text-2xl font-extrabold text-primary">{stat.value}</p>
-                <p className="mt-1 text-xs text-foreground-muted">{stat.label}</p>
-              </div>
-            ))}
-          </motion.div>
+            <motion.div variants={fadeUp} className="mx-auto mt-8 max-w-xl text-left text-foreground-muted lg:mx-0">
+              <p>
+                The real reason I built this: my wife and I could never agree on where to eat or
+                what to watch. Every night turned into the same &quot;I don&apos;t know, you
+                pick&quot; — so I built something to settle it for us. Everyone swipes on the same
+                options, privately, and whoever agrees the most wins. No more back-and-forth.
+              </p>
+              <p className="mt-4">
+                It worked so well that I realized this is a problem basically every group has —
+                roommates, friends, family trips — so I extended this to handle friend groups as
+                well, up to 10 people at once, not just couples.
+              </p>
+              <p className="mt-4">
+                Built with Claude Code and shipped through GitHub, running on Supabase with
+                real-time sync, and wired up with PostHog to see how people actually use it. Next
+                up: expanding beyond movies and restaurants to TV shows, vacations, and more —
+                plus getting SyncUp onto the App Store and Google Play.
+              </p>
+            </motion.div>
 
-          <motion.div variants={fadeUp} className="mx-auto mt-10 max-w-xl lg:mx-0 lg:max-w-2xl">
-            <p className="font-mono text-xs font-semibold uppercase tracking-wide text-foreground-muted">
-              What&apos;s under the hood
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {STACK.map((tech) => (
-                <span
-                  key={tech}
-                  className="rounded-pill border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground-muted shadow-chip"
+            <motion.div
+              variants={fadeUp}
+              className="mx-auto mt-10 grid max-w-xl grid-cols-2 gap-4 lg:mx-0"
+            >
+              {STATS.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="rounded-card border border-border bg-background px-4 py-4 shadow-chip"
                 >
-                  {tech}
-                </span>
+                  <p className="font-mono text-2xl font-extrabold text-primary">{stat.value}</p>
+                  <p className="mt-1 text-xs text-foreground-muted">{stat.label}</p>
+                </div>
               ))}
-            </div>
+            </motion.div>
+
+            <motion.div variants={fadeUp} className="mx-auto mt-10 max-w-xl lg:mx-0">
+              <p className="font-mono text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+                What&apos;s under the hood
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {STACK.map((tech) => (
+                  <span
+                    key={tech}
+                    className="rounded-pill border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground-muted shadow-chip transition-transform duration-150 ease-out hover:-translate-y-0.5 hover:text-foreground"
+                  >
+                    {tech}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+
+          <motion.div variants={fadeUp} className="relative mt-12 hidden lg:block">
+            <PhoneFan size="large" />
           </motion.div>
         </div>
       </motion.section>
@@ -299,16 +309,17 @@ export function AboutView() {
             </h2>
           </motion.div>
           <motion.p variants={fadeUp} className="mx-auto mt-3 max-w-sm text-foreground-muted">
-            SyncUp already installs like an app straight from your browser. A native release on
-            the app stores is next.
+            You can use SyncUp right now, free, straight from your browser. Native App Store and
+            Google Play versions are on the way.
           </motion.p>
 
           <motion.div
             variants={fadeUp}
-            className="mx-auto mt-8 flex max-w-sm flex-col gap-3 sm:flex-row sm:justify-center lg:max-w-md"
+            className="mx-auto mt-8 flex max-w-sm flex-col items-center gap-5 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-6 lg:max-w-xl"
           >
-            <StoreBadge icon={<PhoneIcon />} store="App Store" />
-            <StoreBadge icon={<PlayIcon />} store="Google Play" />
+            <WebAppBadge />
+            <StoreBadge src="/badges/app-store.png" alt="Coming soon to the App Store" />
+            <StoreBadge src="/badges/google-play.png" alt="Get it on Google Play" />
           </motion.div>
         </div>
       </motion.section>
@@ -334,37 +345,122 @@ export function AboutView() {
 // tilted-stack-behind-the-top-card silhouette, the Sync/Pass pair) to read
 // as "this is the actual product" rather than generic hero art. Desktop
 // only: the hero's mobile layout already has CardFanHero for this slot.
+// Outer box reserves the actual (scaled-down) layout footprint on mobile;
+// the inner div holds the real markup at its native 230x420 size and is
+// visually scaled to fit via transform, so every offset inside it (the
+// poster, the floating chip, the button row) stays exactly in proportion
+// without hand-tuning a second set of measurements per breakpoint.
 function PhonePreview() {
   return (
-    <div className="relative">
-      <div className="relative h-[420px] w-[230px] overflow-hidden rounded-[2.5rem] border-[6px] border-foreground bg-surface shadow-card">
-        <div className="absolute left-1/2 top-3 h-1.5 w-16 -translate-x-1/2 rounded-pill bg-foreground/70" />
+    <div className="relative h-[280px] w-[153px] lg:h-[420px] lg:w-[230px]">
+      <div className="absolute left-0 top-0 origin-top-left scale-[0.665] lg:scale-100">
+        <div className="relative">
+          <div className="relative h-[420px] w-[230px] overflow-hidden rounded-[2.5rem] border-[6px] border-foreground bg-surface shadow-card">
+            <div className="absolute left-1/2 top-3 h-1.5 w-16 -translate-x-1/2 rounded-pill bg-foreground/70" />
 
-        <div className="absolute inset-x-5 top-16 h-56 rotate-[-7deg] rounded-card border border-border bg-[#8d99ae]" />
-        <div className="absolute inset-x-5 top-14 flex h-60 flex-col justify-between rounded-card bg-primary p-4 text-white shadow-lg">
-          <div className="h-20 rounded-xl bg-white/20" />
-          <div>
-            <p className="text-sm font-semibold">The Last Heist</p>
-            <p className="text-xs text-white/80">Action · 2h 4m</p>
+            <div className="absolute inset-x-5 top-16 h-56 rotate-[-7deg] rounded-card border border-border bg-[#8d99ae]" />
+            <div className="absolute inset-x-5 top-14 flex h-60 flex-col justify-between overflow-hidden rounded-card text-white shadow-lg">
+              <Image src="/posters/inception.jpg" alt="" fill aria-hidden sizes="190px" className="object-cover" />
+              <div className="relative mt-auto bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 pt-10">
+                <p className="text-sm font-semibold">Inception</p>
+                <p className="text-xs text-white/80">Sci-Fi, Action · 2h 28m</p>
+              </div>
+            </div>
+
+            <div className="absolute bottom-9 left-0 right-0 flex justify-center gap-5">
+              <span className="flex h-10 w-10 items-center justify-center rounded-pill border border-border bg-surface text-foreground-muted shadow-chip">
+                <CrossIcon />
+              </span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-pill bg-sync text-sync-foreground shadow-chip">
+                <CheckIcon />
+              </span>
+            </div>
+          </div>
+
+          <div className="absolute -right-8 top-32 rounded-2xl border border-border bg-surface px-4 py-3 shadow-card">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-foreground-muted">
+              Sync Score
+            </p>
+            <p className="text-2xl font-extrabold text-sync">
+              <CountUp to={92} />%
+            </p>
           </div>
         </div>
-
-        <div className="absolute bottom-9 left-0 right-0 flex justify-center gap-5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-pill border border-border bg-surface text-foreground-muted shadow-chip">
-            <CrossIcon />
-          </span>
-          <span className="flex h-10 w-10 items-center justify-center rounded-pill bg-sync text-sync-foreground shadow-chip">
-            <CheckIcon />
-          </span>
-        </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="absolute -right-8 top-8 rounded-2xl border border-border bg-surface px-4 py-3 shadow-card">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-foreground-muted">
-          Sync Score
-        </p>
-        <p className="text-2xl font-extrabold text-sync">92%</p>
-      </div>
+// Counts up from 0 once mounted — a static "92%" read as placeholder
+// copy, whereas a number that visibly arrives reads as a real, live
+// result. Reduced motion skips straight to the final value.
+function CountUp({ to }: { to: number }) {
+  const reduceMotion = useReducedMotion();
+  const [value, setValue] = useState(reduceMotion ? to : 0);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const controls = animate(0, to, {
+      duration: 1.1,
+      delay: 0.3,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (v) => setValue(Math.round(v)),
+    });
+    return () => controls.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return <>{value}</>;
+}
+
+// A real screenshot of the live app (not a mockup), in the same phone-bezel
+// treatment as PhonePreview above — "here's the actual thing," not just a
+// stylized illustration.
+function PhoneFrame({
+  src,
+  alt,
+  className,
+  style,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      style={style}
+      className={`overflow-hidden rounded-[2.5rem] border-[6px] border-foreground bg-surface shadow-card ${className}`}
+    >
+      <Image src={src} alt={alt} fill sizes="252px" className="object-cover object-top" />
+      <div className="pointer-events-none absolute left-1/2 top-3 h-1.5 w-16 -translate-x-1/2 rounded-pill bg-foreground/70" />
+    </div>
+  );
+}
+
+// Two real screenshots fanned like CardFanHero's card stack — the landing
+// screen behind, the actual "YOU'RE SYNCED" reveal in front, so this
+// section shows the whole arc (open the app → get a real result) instead
+// of just the one screen a single frame could fit.
+function PhoneFan({ size }: { size: "small" | "large" }) {
+  const dims = size === "large" ? { h: 440, w: 240 } : { h: 280, w: 153 };
+  return (
+    <div
+      className="relative mx-auto"
+      style={{ height: dims.h + 28, width: dims.w + 56 }}
+    >
+      <PhoneFrame
+        src="/screenshots/home.png"
+        alt="SyncUp home screen"
+        className="absolute left-0 top-0 -rotate-6"
+        style={{ height: dims.h, width: dims.w }}
+      />
+      <PhoneFrame
+        src="/screenshots/results.jpg"
+        alt="SyncUp results screen showing a synced match"
+        className="absolute bottom-0 right-0 rotate-3"
+        style={{ height: dims.h, width: dims.w }}
+      />
     </div>
   );
 }
@@ -385,37 +481,59 @@ function CheckIcon() {
   );
 }
 
-function StoreBadge({ icon, store }: { icon: React.ReactNode; store: string }) {
+// The real official badges (Apple's and Google's own artwork), shown
+// unmodified — each is self-describing (the Apple one already says
+// "Coming Soon to the App Store" baked into the artwork; the surrounding
+// paragraph covers Google Play), so no extra label wrapper is needed.
+// A fixed box with object-contain (rather than a fixed height + w-auto)
+// keeps both the same size regardless of their differing source aspect
+// ratios, so they read as a matched pair instead of Apple's badge just
+// happening to be wider.
+function StoreBadge({ src, alt }: { src: string; alt: string }) {
   return (
-    <div
-      aria-disabled="true"
-      className="flex flex-1 items-center justify-center gap-2.5 rounded-pill border border-border bg-surface px-5 py-3 text-foreground-muted shadow-chip"
-    >
-      <span aria-hidden className="flex-shrink-0">
-        {icon}
-      </span>
-      <span className="text-left leading-tight">
-        <span className="block text-[10px] font-medium uppercase tracking-wide">Coming soon</span>
-        <span className="block text-sm font-semibold text-foreground">{store}</span>
-      </span>
-    </div>
+    <span className="relative block h-14 w-[172px]">
+      <Image src={src} alt={alt} fill sizes="172px" className="object-contain" />
+    </span>
   );
 }
 
-function PhoneIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="7" y="2" width="10" height="20" rx="2.5" stroke="currentColor" strokeWidth="1.75" />
-      <line x1="11" y1="18.5" x2="13" y2="18.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-    </svg>
-  );
-}
+// The one option here that actually works today — no store, no install
+// step beyond what the platform itself supports. Chrome/Edge/Android get
+// a real "Install" button via the shared beforeinstallprompt capture;
+// iOS Safari has no such API (see use-install-prompt.ts) so it gets
+// instructions instead; everything else falls back to just opening the
+// app, where the browser's own install affordance (if any) still applies.
+function WebAppBadge() {
+  const { platform, promptInstall } = useInstallPrompt();
 
-function PlayIcon() {
+  const card = (
+    <span className="flex h-14 w-[172px] flex-col items-center justify-center rounded-xl border border-border bg-surface px-3 text-center shadow-chip transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]">
+      <span className="text-xs font-semibold leading-tight">Install the web app</span>
+      <span className="mt-0.5 text-[10px] leading-tight text-foreground-muted">
+        {platform === "ios-safari"
+          ? 'Tap Share → "Add to Home Screen"'
+          : platform === "ios-other"
+            ? "Open in Safari to install"
+            : platform === "promptable"
+              ? "One tap, no store needed"
+              : "Free, right in your browser"}
+      </span>
+    </span>
+  );
+
+  if (!platform) return <span className="h-14 w-[172px]" aria-hidden />;
+
+  if (platform === "promptable") {
+    return (
+      <button type="button" onClick={promptInstall}>
+        {card}
+      </button>
+    );
+  }
+
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="currentColor" strokeWidth="1.75" />
-      <path d="M10 8.5v7l6-3.5-6-3.5z" fill="currentColor" />
-    </svg>
+    <TrackedLink href="/" event="start_clicked">
+      {card}
+    </TrackedLink>
   );
 }

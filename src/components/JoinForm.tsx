@@ -61,7 +61,7 @@ export function JoinForm({
           maxLength={40}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ananya"
+          placeholder="Niharika"
           className="rounded-card border border-border bg-surface px-4 py-3 text-lg shadow-card outline-none focus:border-primary"
         />
       </div>
