@@ -83,7 +83,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function AboutView() {
+export function AboutView({ fromApp = false }: { fromApp?: boolean }) {
   const fadeUp = useFadeUp();
 
   return (
@@ -93,15 +93,17 @@ export function AboutView() {
         className="pointer-events-none absolute left-1/2 top-[4vh] h-72 w-72 -translate-x-1/2 rounded-full bg-primary/20 blur-[80px]"
       />
 
-      <a
-        href="https://neeraj-portfolio-orcin.vercel.app"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed left-4 z-40 flex h-11 items-center rounded-pill border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-md transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
-        style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
-      >
-        ← Portfolio
-      </a>
+      {!fromApp && (
+        <a
+          href="https://neeraj-portfolio-orcin.vercel.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed left-4 z-40 flex h-11 items-center rounded-pill border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-md transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97]"
+          style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
+        >
+          ← Portfolio
+        </a>
+      )}
 
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section className={`relative ${sectionInner} px-6 pb-14 pt-20 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:px-10 lg:pt-28`}>
@@ -326,15 +328,17 @@ export function AboutView() {
 
       {/* ── Footer ──────────────────────────────────────────────────── */}
       <footer className="relative border-t border-border px-6 py-10 text-center">
-        <a
-          href="https://neeraj-portfolio-orcin.vercel.app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
-        >
-          ← Back to Neeraj&apos;s portfolio
-        </a>
-        <p className="mt-3 text-xs text-foreground-muted">Built by Neeraj P.</p>
+        {!fromApp && (
+          <a
+            href="https://neeraj-portfolio-orcin.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            ← Back to Neeraj&apos;s portfolio
+          </a>
+        )}
+        <p className={`text-xs text-foreground-muted ${fromApp ? "" : "mt-3"}`}>Built by Neeraj P.</p>
       </footer>
     </main>
   );

@@ -12,6 +12,15 @@ export const metadata: Metadata = {
     "Why I built SyncUp: a swipe-to-decide app for groups who can't agree on what to watch or where to eat.",
 };
 
-export default function AboutPage() {
-  return <AboutView />;
+export default async function AboutPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ src?: string }>;
+}) {
+  // ?src=app (set by the two links inside the real app, on "/") means this
+  // visitor came from inside SyncUp itself, not from Neeraj's portfolio —
+  // AboutView hides the portfolio links for that visit so someone the app
+  // was shared with doesn't click straight through to it.
+  const fromApp = (await searchParams).src === "app";
+  return <AboutView fromApp={fromApp} />;
 }
