@@ -191,12 +191,12 @@ function CreateForm() {
               maxLength={40}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Neeraj"
+              placeholder="Niharika"
               aria-labelledby="name-heading"
               className="rounded-card border border-border bg-surface px-4 py-3 text-lg shadow-card outline-none focus:border-primary"
             />
             <p className="text-xs text-foreground-muted">
-              Shown to people you invite, e.g. &quot;{name.trim() || "Neeraj"} wants to
+              Shown to people you invite, e.g. &quot;{name.trim() || "Niharika"} wants to
               decide {category === "WATCH" ? "what to watch" : "where to eat"}&quot;.
             </p>
           </section>
