@@ -156,6 +156,12 @@ export function getHostParticipantId(participants: ParticipantRow[]): string | n
   return participants[0]?.id ?? null;
 }
 
+// A participant's guest_id never changes, so a confirmed match is remembered
+// for the life of the server instance — otherwise every swipe pays an extra
+// database round trip, and fast swiping queues up behind it.
+const verifiedParticipants = new Set<string>();
+const MAX_VERIFIED = 10_000;
+
 // True only if `participantId` is this guest's own row in this session. Every
 // action that acts on behalf of a participant checks this first, since
 // participant ids themselves are visible to everyone in the session.
@@ -164,6 +170,9 @@ export async function isOwnParticipant(
   participantId: string,
   guestId: string,
 ): Promise<boolean> {
+  const key = `${sessionId}:${participantId}:${guestId}`;
+  if (verifiedParticipants.has(key)) return true;
+
   const { data, error } = await getServiceSupabase()
     .from("participants")
     .select("id")
@@ -173,7 +182,10 @@ export async function isOwnParticipant(
     .maybeSingle();
 
   if (error) throw error;
-  return data !== null;
+  if (data === null) return false;
+  if (verifiedParticipants.size >= MAX_VERIFIED) verifiedParticipants.clear();
+  verifiedParticipants.add(key);
+  return true;
 }
 
 export async function joinSession(
