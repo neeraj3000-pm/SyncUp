@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { animate, motion, useReducedMotion } from "motion/react";
 import { TrackedLink } from "@/components/TrackedLink";
-import { buttonPrimary, buttonSecondary } from "@/lib/ui";
+import { buttonPrimary } from "@/lib/ui";
 import { useInstallPrompt } from "@/lib/use-install-prompt";
 
 // Same "safe house style" as ResultsView's reveal cascade: critically
@@ -121,12 +121,9 @@ export function AboutView({ fromApp = false }: { fromApp?: boolean }) {
             Swipe. Match. Stop arguing.
           </p>
 
-          <div className="mt-8 flex w-full max-w-xs flex-col gap-3 lg:flex-row lg:max-w-none">
-            <TrackedLink href="/create" event="start_clicked" className={buttonPrimary}>
-              Start a SyncUp!
-            </TrackedLink>
-            <TrackedLink href="/join" event="join_clicked" className={buttonSecondary}>
-              Join a SyncUp!
+          <div className="mt-8 w-full max-w-xs">
+            <TrackedLink href="/" event="start_clicked" className={buttonPrimary}>
+              Check out SyncUp
             </TrackedLink>
           </div>
         </div>
