@@ -1,8 +1,7 @@
-// The movie-pool filters (PRD section 11-12), shared by the picker UI, the
-// server-side validation and the TMDB provider. Deliberately free of any
-// server-only code so client components can import it too.
+// Movie-pool filters, shared by the picker, validation and the TMDB
+// provider (so no server-only imports here).
 
-export const MOVIE_GENRES = [
+const MOVIE_GENRES = [
   { value: "action", label: "Action" },
   { value: "comedy", label: "Comedy" },
   { value: "drama", label: "Drama" },
@@ -13,13 +12,13 @@ export const MOVIE_GENRES = [
   { value: "animation", label: "Animation" },
 ] as const;
 
-export const MOVIE_DISCOVER_OPTIONS = [
+const MOVIE_DISCOVER_OPTIONS = [
   { value: "now_playing_india", label: "Now Playing in India" },
   { value: "popular", label: "Popular Right Now" },
   { value: "top_rated", label: "Top Rated" },
 ] as const;
 
-export const MOVIE_LANGUAGES = [
+const MOVIE_LANGUAGES = [
   { value: "hindi", label: "Bollywood" },
   { value: "tamil", label: "Tamil" },
   { value: "telugu", label: "Telugu" },
@@ -29,7 +28,7 @@ export const MOVIE_LANGUAGES = [
 ] as const;
 
 export type MovieGenreSlug = (typeof MOVIE_GENRES)[number]["value"];
-export type MovieDiscoverSlug = (typeof MOVIE_DISCOVER_OPTIONS)[number]["value"];
+type MovieDiscoverSlug = (typeof MOVIE_DISCOVER_OPTIONS)[number]["value"];
 export type MovieLanguageSlug = (typeof MOVIE_LANGUAGES)[number]["value"];
 
 // At most one filter is active per session — each kind is a different way of

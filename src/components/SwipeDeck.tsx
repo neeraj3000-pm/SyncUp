@@ -23,6 +23,7 @@ const PROGRESS_POLL_MS = 4000;
 // Matches DecisionCard's fling — the queue advances once the outgoing card
 // has finished animating off-screen.
 const ADVANCE_DELAY_MS = 300;
+const PRELOAD_AHEAD = 3;
 
 // The one place that picks a presentational card by category —
 // DecisionCard itself stays category-agnostic (PRD section 40).
@@ -38,6 +39,7 @@ function renderCard(category: SessionCategory, item: ItemRow) {
 export function SwipeDeck({
   sessionId,
   participantId,
+  guestId,
   category,
   initialItems,
   isCreator,
@@ -47,6 +49,7 @@ export function SwipeDeck({
 }: {
   sessionId: string;
   participantId: string;
+  guestId: string;
   category: SessionCategory;
   initialItems: SessionItemRow[];
   isCreator: boolean;
@@ -62,9 +65,7 @@ export function SwipeDeck({
   const [error, setError] = useState<string | null>(null);
   const [revealPromptDismissed, setRevealPromptDismissed] = useState(false);
   const advancingRef = useRef(false);
-  // Guards "batch_completed" against firing on every re-render while
-  // queue.length stays 0 — keyed on items.length so a fresh batch pulled in
-  // via "Show Me 50 More" can still fire it again once that one's exhausted.
+  // batch_completed fires once per batch (keyed on items.length).
   const batchCompletedForRef = useRef<number | null>(null);
 
   // Resume support: skip whatever this participant already swiped (after a
@@ -72,7 +73,7 @@ export function SwipeDeck({
   // swipes within the deck update `queue` directly.
   useEffect(() => {
     let cancelled = false;
-    getMySwipedItemIdsAction({ sessionId, participantId }).then((result) => {
+    getMySwipedItemIdsAction({ sessionId, participantId, guestId }).then((result) => {
       if (cancelled) return;
       const swiped = new Set(result.ok ? result.data : []);
       setQueue(items.map((si) => si.item).filter((item) => !swiped.has(item.id)));
@@ -80,7 +81,15 @@ export function SwipeDeck({
     return () => {
       cancelled = true;
     };
-  }, [items, sessionId, participantId]);
+  }, [items, sessionId, participantId, guestId]);
+
+  // The next card is already rendered underneath; warm the cache for the
+  // few after it so fast swiping never lands on a blank image.
+  useEffect(() => {
+    queue?.slice(2, 2 + PRELOAD_AHEAD).forEach((item) => {
+      if (item.image_url) new Image().src = item.image_url;
+    });
+  }, [queue]);
 
   // The current batch (initial 50, or the next 50 from "Show Me More") has
   // been fully swiped through.
@@ -111,7 +120,7 @@ export function SwipeDeck({
     setError(null);
     track("swipe_recorded", { session_id: sessionId, category, direction, super_liked: superLiked });
 
-    swipeAction({ sessionId, participantId, itemId: item.id, direction, superLiked }).then(
+    swipeAction({ sessionId, participantId, guestId, itemId: item.id, direction, superLiked }).then(
       (result) => {
         if (result.ok) return;
         setError(result.error);
@@ -150,7 +159,7 @@ export function SwipeDeck({
     setFinished(true);
     setError(null);
     track("participant_finished", { session_id: sessionId, category });
-    const result = await markFinishedAction(participantId);
+    const result = await markFinishedAction({ sessionId, participantId, guestId });
     if (!result.ok) {
       setFinished(false);
       setError(result.error);
@@ -161,11 +170,16 @@ export function SwipeDeck({
     return <p className="text-foreground-muted">Loading your deck…</p>;
   }
 
+  // Counted locally so the number moves with every swipe rather than with
+  // the progress poll.
+  const mySwipeCount = items.length - queue.length;
+
   const progressList = (
     <SwipeProgress
       progress={progress}
       totalItems={items.length}
       myParticipantId={participantId}
+      mySwipeCount={mySwipeCount}
       hostParticipantId={hostParticipantId}
     />
   );
@@ -231,13 +245,12 @@ export function SwipeDeck({
     );
   }
 
-  const totalSwiped = progress.find((p) => p.participant_id === participantId)?.swipe_count ?? 0;
   const [top, next] = queue;
 
   return (
     <div className="flex w-full flex-col items-center gap-4">
       <p className="text-sm text-foreground-muted" role="status" aria-live="polite">
-        {totalSwiped}/{items.length}
+        {mySwipeCount}/{items.length}
       </p>
 
       {/* Fixed height, never squeezed: the card is this screen's primary
@@ -252,10 +265,6 @@ export function SwipeDeck({
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
-      {/* Capped, same as the other two branches below — the parent region
-          now scrolls as a whole (SessionRoom), so this doesn't need its
-          own flex-1 "fill the leftover space" sizing, just a sane cap for
-          a full 10-person group. */}
       <div className="w-full max-h-48 overflow-y-auto overscroll-contain">{progressList}</div>
     </div>
   );

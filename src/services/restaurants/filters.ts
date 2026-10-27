@@ -1,6 +1,5 @@
-// The restaurant-pool filters (PRD section 13), shared by the picker UI, the
-// server-side validation and the Google Places provider. Deliberately free
-// of any server-only code so client components can import it too.
+// Restaurant-pool filters, shared by the picker, validation and the Places
+// provider (so no server-only imports here).
 
 export const RESTAURANT_CUISINES = [
   { value: "indian", label: "Indian" },
@@ -25,9 +24,7 @@ export type RestaurantCuisineSlug = (typeof RESTAURANT_CUISINES)[number]["value"
 export type RestaurantPriceSlug = (typeof RESTAURANT_PRICES)[number]["value"];
 
 export interface RestaurantFilter {
-  // A list, not a single value: someone choosing "Indian or Chinese" is a
-  // normal thing to want, unlike price/distance where picking one bucket
-  // is the natural model.
+  // Multi-select ("Indian or Chinese"), unlike price/distance.
   cuisine: RestaurantCuisineSlug[];
   price: RestaurantPriceSlug | null;
   openNow: boolean;
@@ -60,9 +57,7 @@ function isOneOf<T>(value: unknown, allowed: readonly T[]): value is T {
   return (allowed as readonly unknown[]).includes(value);
 }
 
-// Shared by createSessionAction and the filter-count preview action — both
-// take a client-submitted filter and need the exact same validation against
-// the slugs/options this file defines.
+// Validates a client-submitted filter.
 export function normalizeRestaurantFilter(raw: unknown): RestaurantFilter | null | "invalid" {
   if (raw === null || raw === undefined) return null;
   if (typeof raw !== "object") return "invalid";

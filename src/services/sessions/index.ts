@@ -7,34 +7,31 @@ import type { MovieFilter } from "@/services/movies/filters";
 import type { RestaurantFilter } from "@/services/restaurants/filters";
 
 export type SessionCategory = "WATCH" | "EAT";
-export type SessionMode = "COUPLE" | "GROUP";
-export type SessionStatus =
-  | "WAITING"
-  | "ACTIVE"
-  | "COMPLETED"
-  | "EXPIRED"
-  | "CANCELLED";
+type SessionMode = "COUPLE" | "GROUP";
+export type SessionStatus = "WAITING" | "ACTIVE" | "COMPLETED" | "EXPIRED" | "CANCELLED";
+
+// Guest ids (sessions.creator_guest_id, participants.guest_id) are bearer
+// credentials — they authorize swiping and starting/ending a session — so
+// they are never selected into anything that can reach a browser.
+const SESSION_COLUMNS =
+  "id, code, mode, category, duration_seconds, started_at, expires_at, status, created_at, location_lat, location_lng, location_label, movie_filter, restaurant_filter";
+const PARTICIPANT_COLUMNS = "id, session_id, display_name, joined_at";
 
 export interface SessionRow {
   id: string;
   code: string;
-  creator_id: string | null;
-  creator_guest_id: string | null;
   mode: SessionMode;
   category: SessionCategory;
-  title: string | null;
   duration_seconds: number | null;
   started_at: string | null;
   expires_at: string | null;
   status: SessionStatus;
-  decision_rule: string;
   created_at: string;
-  // EAT only (PRD section 13) — exactly one location shape is set; see
-  // migration 0006 for which restaurant search each one implies.
+  // EAT only: either coordinates or a free-text area (migration 0006).
   location_lat: number | null;
   location_lng: number | null;
   location_label: string | null;
-  // null means no filter ("All Movies" / "All Restaurants").
+  // null = no filter.
   movie_filter: MovieFilter | null;
   restaurant_filter: RestaurantFilter | null;
 }
@@ -42,21 +39,14 @@ export interface SessionRow {
 export interface ParticipantRow {
   id: string;
   session_id: string;
-  user_id: string | null;
-  guest_id: string | null;
   display_name: string;
   joined_at: string;
-  last_active_at: string;
 }
 
 // PRD section 6/22: Couple is exactly 2, Group is 3-10.
 const MAX_PARTICIPANTS = 10;
 const MIN_PARTICIPANTS_TO_START = 2;
-
-// Codes come from a ~29-character alphabet, so collisions are rare but
-// possible — retry against the unique constraint instead of trusting one draw.
 const MAX_CODE_ATTEMPTS = 5;
-
 const UNIQUE_VIOLATION = "23505";
 
 interface CreateSessionInput {
@@ -65,48 +55,38 @@ interface CreateSessionInput {
   durationSeconds: number | null;
   creatorGuestId: string;
   displayName: string;
-  locationLat?: number | null;
-  locationLng?: number | null;
-  locationLabel?: string | null;
-  movieFilter?: MovieFilter | null;
-  restaurantFilter?: RestaurantFilter | null;
+  locationLat: number | null;
+  locationLng: number | null;
+  locationLabel: string | null;
+  movieFilter: MovieFilter | null;
+  restaurantFilter: RestaurantFilter | null;
 }
 
-export async function createSession({
-  category,
-  durationSeconds,
-  creatorGuestId,
-  displayName,
-  locationLat = null,
-  locationLng = null,
-  locationLabel = null,
-  movieFilter = null,
-  restaurantFilter = null,
-}: CreateSessionInput): Promise<{
-  session: SessionRow;
-  participant: ParticipantRow;
-}> {
+export async function createSession(
+  input: CreateSessionInput,
+): Promise<{ session: SessionRow; participant: ParticipantRow }> {
   const db = getServiceSupabase();
 
+  // Codes are short, so a collision with the unique index is possible —
+  // retry with a fresh one rather than trusting a single draw.
   for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
     const { data, error } = await db
       .from("sessions")
       .insert({
         code: generateSessionCode(),
-        category,
-        // Couple vs. Group is derived from the real headcount at start
-        // (startSession); the matching math is identical either way.
+        category: input.category,
+        // The real mode is set from the headcount at start.
         mode: "GROUP",
-        duration_seconds: durationSeconds,
+        duration_seconds: input.durationSeconds,
         status: "WAITING",
-        creator_guest_id: creatorGuestId,
-        location_lat: locationLat,
-        location_lng: locationLng,
-        location_label: locationLabel,
-        movie_filter: movieFilter,
-        restaurant_filter: restaurantFilter,
+        creator_guest_id: input.creatorGuestId,
+        location_lat: input.locationLat,
+        location_lng: input.locationLng,
+        location_label: input.locationLabel,
+        movie_filter: input.movieFilter,
+        restaurant_filter: input.restaurantFilter,
       })
-      .select()
+      .select(SESSION_COLUMNS)
       .single();
 
     if (error) {
@@ -114,18 +94,16 @@ export async function createSession({
       throw error;
     }
 
-    const session = data as SessionRow;
-    // The creator is the first participant. Inserted directly rather than
-    // through joinSession(): this session is guaranteed fresh, so its
-    // rejoin/status/capacity checks would only add round trips.
+    // The creator is always the session's first participant — getHostParticipantId
+    // and the join screen's "Neeraj wants to decide…" both rely on that.
     const { data: participant, error: participantError } = await db
       .from("participants")
-      .insert({ session_id: session.id, guest_id: creatorGuestId, display_name: displayName })
-      .select()
+      .insert({ session_id: data.id, guest_id: input.creatorGuestId, display_name: input.displayName })
+      .select(PARTICIPANT_COLUMNS)
       .single();
 
     if (participantError) throw participantError;
-    return { session, participant: participant as ParticipantRow };
+    return { session: data as SessionRow, participant: participant as ParticipantRow };
   }
 
   throw new Error("Could not generate a unique session code, please retry.");
@@ -134,7 +112,7 @@ export async function createSession({
 export async function getSessionById(id: string): Promise<SessionRow | null> {
   const { data, error } = await getSupabase()
     .from("sessions")
-    .select()
+    .select(SESSION_COLUMNS)
     .eq("id", id)
     .maybeSingle();
 
@@ -142,16 +120,12 @@ export async function getSessionById(id: string): Promise<SessionRow | null> {
   return data as SessionRow | null;
 }
 
-// The join screen needs the session plus its creator's name (PRD section
-// 19: "Neeraj wants to decide what to watch") — fetched in one query. The
-// creator is always the earliest participant, since createSession inserts
-// them alongside the session itself.
 export async function getSessionWithCreatorByCode(
   code: string,
 ): Promise<{ session: SessionRow; creatorName: string | null } | null> {
   const { data, error } = await getSupabase()
     .from("sessions")
-    .select("*, participants(display_name)")
+    .select(`${SESSION_COLUMNS}, participants(display_name)`)
     .eq("code", code.toUpperCase())
     .order("joined_at", { referencedTable: "participants", ascending: true })
     .limit(1, { referencedTable: "participants" })
@@ -160,7 +134,7 @@ export async function getSessionWithCreatorByCode(
   if (error) throw error;
   if (!data) return null;
 
-  const { participants, ...session } = data as SessionRow & {
+  const { participants, ...session } = data as unknown as SessionRow & {
     participants: { display_name: string }[];
   };
   return { session, creatorName: participants[0]?.display_name ?? null };
@@ -169,7 +143,7 @@ export async function getSessionWithCreatorByCode(
 export async function getParticipants(sessionId: string): Promise<ParticipantRow[]> {
   const { data, error } = await getSupabase()
     .from("participants")
-    .select()
+    .select(PARTICIPANT_COLUMNS)
     .eq("session_id", sessionId)
     .order("joined_at", { ascending: true });
 
@@ -177,28 +151,48 @@ export async function getParticipants(sessionId: string): Promise<ParticipantRow
   return (data ?? []) as ParticipantRow[];
 }
 
+// The creator is the earliest participant (see createSession).
+export function getHostParticipantId(participants: ParticipantRow[]): string | null {
+  return participants[0]?.id ?? null;
+}
+
+// True only if `participantId` is this guest's own row in this session. Every
+// action that acts on behalf of a participant checks this first, since
+// participant ids themselves are visible to everyone in the session.
+export async function isOwnParticipant(
+  sessionId: string,
+  participantId: string,
+  guestId: string,
+): Promise<boolean> {
+  const { data, error } = await getServiceSupabase()
+    .from("participants")
+    .select("id")
+    .eq("id", participantId)
+    .eq("session_id", sessionId)
+    .eq("guest_id", guestId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data !== null;
+}
+
 export async function joinSession(
   sessionId: string,
   guestId: string,
   displayName: string,
 ): Promise<ParticipantRow> {
-  const supabase = getSupabase();
+  const db = getServiceSupabase();
 
-  // Independent checks, run together: one round trip instead of three.
   const [existingResult, sessionResult, countResult] = await Promise.all([
-    // Rejoining (refresh, or opening the same link twice) resolves back to
-    // the existing row rather than creating a duplicate participant.
-    supabase
+    // A rejoin (refresh, reopened link) resolves to the existing row.
+    db
       .from("participants")
-      .select()
+      .select(PARTICIPANT_COLUMNS)
       .eq("session_id", sessionId)
       .eq("guest_id", guestId)
       .maybeSingle(),
-    supabase.from("sessions").select("status").eq("id", sessionId).maybeSingle(),
-    supabase
-      .from("participants")
-      .select("id", { count: "exact", head: true })
-      .eq("session_id", sessionId),
+    db.from("sessions").select("status").eq("id", sessionId).maybeSingle(),
+    db.from("participants").select("id", { count: "exact", head: true }).eq("session_id", sessionId),
   ]);
 
   if (existingResult.error) throw existingResult.error;
@@ -206,26 +200,25 @@ export async function joinSession(
 
   if (sessionResult.error) throw sessionResult.error;
   if (!sessionResult.data) throw new Error("SESSION_NOT_FOUND");
-  // PRD section 20: joining once the session is ACTIVE is disabled for MVP.
+  // PRD section 20: no joining once a session is under way.
   if (sessionResult.data.status !== "WAITING") throw new Error("SESSION_NOT_JOINABLE");
 
   if (countResult.error) throw countResult.error;
   if ((countResult.count ?? 0) >= MAX_PARTICIPANTS) throw new Error("SESSION_FULL");
 
-  const { data, error } = await getServiceSupabase()
+  const { data, error } = await db
     .from("participants")
     .insert({ session_id: sessionId, guest_id: guestId, display_name: displayName })
-    .select()
+    .select(PARTICIPANT_COLUMNS)
     .single();
 
   if (error) {
-    // A double-submitted join from the same browser loses the race to its
-    // own twin on the (session_id, guest_id) unique index — that row is
-    // exactly the one this call was trying to create, so return it.
+    // A double-submitted join loses the race to its own twin on the
+    // (session_id, guest_id) unique index — return the row that won.
     if (error.code === UNIQUE_VIOLATION) {
-      const { data: existing, error: refetchError } = await supabase
+      const { data: existing, error: refetchError } = await db
         .from("participants")
-        .select()
+        .select(PARTICIPANT_COLUMNS)
         .eq("session_id", sessionId)
         .eq("guest_id", guestId)
         .single();
@@ -238,55 +231,51 @@ export async function joinSession(
 }
 
 export async function startSession(sessionId: string, guestId: string): Promise<SessionRow> {
-  const supabase = getSupabase();
+  const db = getServiceSupabase();
 
   const [sessionResult, countResult] = await Promise.all([
-    supabase.from("sessions").select().eq("id", sessionId).maybeSingle(),
-    supabase
-      .from("participants")
-      .select("id", { count: "exact", head: true })
-      .eq("session_id", sessionId),
+    db
+      .from("sessions")
+      .select(`${SESSION_COLUMNS}, creator_guest_id`)
+      .eq("id", sessionId)
+      .maybeSingle(),
+    db.from("participants").select("id", { count: "exact", head: true }).eq("session_id", sessionId),
   ]);
 
   if (sessionResult.error) throw sessionResult.error;
-  const session = sessionResult.data as SessionRow | null;
-  if (!session) throw new Error("SESSION_NOT_FOUND");
-  if (session.creator_guest_id !== guestId) throw new Error("NOT_CREATOR");
+  if (!sessionResult.data) throw new Error("SESSION_NOT_FOUND");
+  const { creator_guest_id, ...session } = sessionResult.data as unknown as SessionRow & {
+    creator_guest_id: string | null;
+  };
+  if (creator_guest_id !== guestId) throw new Error("NOT_CREATOR");
   if (session.status !== "WAITING") throw new Error("SESSION_ALREADY_STARTED");
 
   if (countResult.error) throw countResult.error;
   const participantCount = countResult.count ?? 0;
-  if (participantCount < MIN_PARTICIPANTS_TO_START) {
-    throw new Error("NOT_ENOUGH_PARTICIPANTS");
-  }
+  if (participantCount < MIN_PARTICIPANTS_TO_START) throw new Error("NOT_ENOUGH_PARTICIPANTS");
 
-  // The pool must exist BEFORE status flips to ACTIVE: realtime subscribers
-  // load it the moment they see ACTIVE, and the timer should only start
-  // once swiping can actually begin.
+  // The pool must exist before status flips to ACTIVE: clients load it the
+  // moment they see ACTIVE, and the timer shouldn't run before swiping can.
   const poolSize = await generateCandidatePool(session, 1);
-  // Narrow restaurant filters can leave nothing to swipe on — better to say
-  // so now than to start a session with an empty deck.
   if (poolSize === 0) throw new Error("NO_CANDIDATES");
 
   const startedAt = new Date();
-  // null duration = no time limit, so no expiry either.
   const expiresAt = session.duration_seconds
     ? new Date(startedAt.getTime() + session.duration_seconds * 1000).toISOString()
     : null;
 
-  const { data, error } = await getServiceSupabase()
+  const { data, error } = await db
     .from("sessions")
     .update({
       status: "ACTIVE",
       started_at: startedAt.toISOString(),
       expires_at: expiresAt,
-      // PRD section 21/22: exactly 2 participants is Couple, 3-10 is Group.
       mode: participantCount === 2 ? "COUPLE" : "GROUP",
     })
     .eq("id", sessionId)
-    // Guards a double-tapped Start: only one call gets to flip the status.
+    // Guards a double-tapped Start: only one call flips the status.
     .eq("status", "WAITING")
-    .select()
+    .select(SESSION_COLUMNS)
     .maybeSingle();
 
   if (error) throw error;

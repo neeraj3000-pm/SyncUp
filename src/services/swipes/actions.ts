@@ -15,7 +15,7 @@ import {
   getSessionItems,
   type SessionItemRow,
 } from "@/services/candidates";
-import { getSessionById, markParticipantFinished } from "@/services/sessions";
+import { getSessionById, isOwnParticipant, markParticipantFinished } from "@/services/sessions";
 
 const VALID_DIRECTIONS: SwipeDirection[] = ["SYNC", "PASS"];
 
@@ -28,6 +28,7 @@ const MAX_LOOKAHEAD_BATCHES = 3;
 export async function swipeAction(input: {
   sessionId: string;
   participantId: string;
+  guestId: string;
   itemId: string;
   direction: string;
   superLiked?: boolean;
@@ -35,6 +36,7 @@ export async function swipeAction(input: {
   if (
     !isUuid(input.sessionId) ||
     !isUuid(input.participantId) ||
+    !isUuid(input.guestId) ||
     !isUuid(input.itemId) ||
     !VALID_DIRECTIONS.includes(input.direction as SwipeDirection) ||
     (input.superLiked !== undefined && typeof input.superLiked !== "boolean")
@@ -46,6 +48,9 @@ export async function swipeAction(input: {
   const superLiked = input.superLiked === true && input.direction === "SYNC";
 
   try {
+    if (!(await isOwnParticipant(input.sessionId, input.participantId, input.guestId))) {
+      return { ok: false, error: "Invalid swipe." };
+    }
     await recordSwipe(
       input.sessionId,
       input.participantId,
@@ -103,11 +108,15 @@ export async function requestMoreCandidatesAction(input: {
 export async function getMySwipedItemIdsAction(input: {
   sessionId: string;
   participantId: string;
+  guestId: string;
 }): Promise<ActionResult<string[]>> {
-  if (!isUuid(input.sessionId) || !isUuid(input.participantId)) {
+  if (!isUuid(input.sessionId) || !isUuid(input.participantId) || !isUuid(input.guestId)) {
     return { ok: false, error: "Invalid request." };
   }
   try {
+    if (!(await isOwnParticipant(input.sessionId, input.participantId, input.guestId))) {
+      return { ok: false, error: "Invalid request." };
+    }
     return { ok: true, data: await getMySwipedItemIds(input.sessionId, input.participantId) };
   } catch (error) {
     console.error("getMySwipedItemIdsAction failed:", error);
@@ -127,10 +136,19 @@ export async function getSessionProgressAction(
   }
 }
 
-export async function markFinishedAction(participantId: string): Promise<ActionResult<null>> {
-  if (!isUuid(participantId)) return { ok: false, error: "Invalid request." };
+export async function markFinishedAction(input: {
+  sessionId: string;
+  participantId: string;
+  guestId: string;
+}): Promise<ActionResult<null>> {
+  if (!isUuid(input.sessionId) || !isUuid(input.participantId) || !isUuid(input.guestId)) {
+    return { ok: false, error: "Invalid request." };
+  }
   try {
-    await markParticipantFinished(participantId);
+    if (!(await isOwnParticipant(input.sessionId, input.participantId, input.guestId))) {
+      return { ok: false, error: "Invalid request." };
+    }
+    await markParticipantFinished(input.participantId);
     return { ok: true, data: null };
   } catch (error) {
     console.error("markFinishedAction failed:", error);

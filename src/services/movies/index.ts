@@ -5,9 +5,7 @@ import type {
   MovieLanguageSlug,
 } from "@/services/movies/filters";
 
-// PRD section 37: movie content flows through a provider abstraction, never
-// called directly from the UI. TMDB is the provider (CLAUDE.md — chosen
-// during implementation, not named in the PRD itself).
+// TMDB, server-side only.
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
 
@@ -32,10 +30,7 @@ interface TmdbGenre {
   name: string;
 }
 
-// TMDB's own genre ids (from /genre/movie/list) — fixed and stable enough
-// to hardcode for the 8 this app actually offers, rather than resolving a
-// slug through getGenreMap() (built for the opposite direction: id → name,
-// for card metadata) on every candidate-pool generation.
+// TMDB's genre ids (/genre/movie/list) — stable, so hardcoded.
 const GENRE_TMDB_IDS: Record<MovieGenreSlug, number> = {
   action: 28,
   comedy: 35,
@@ -116,15 +111,9 @@ function normalizeMovie(raw: TmdbMovieSummary, genreMap: Map<number, string>): N
   };
 }
 
-// Batch 1 reads TMDB pages 1-3, batch 2 reads pages 4-6, and so on — this is
-// how "Show Me 50 More" (PRD section 12) gets a different set of movies
-// instead of repeating the first batch. session_items itself also dedupes
-// against whatever the session has already shown (see services/candidates).
+// Batch 1 reads TMDB pages 1-3, batch 2 pages 4-6, and so on.
 const PAGES_PER_BATCH = 3;
 
-// Turns a UI-picked filter into the actual TMDB request — the one place
-// that knows which endpoint/param each filter kind needs, so neither the
-// UI nor the category-agnostic candidate-pool pipeline has to.
 function buildPoolQuery(filter: MovieFilter | null): {
   path: string;
   params: Record<string, string>;
@@ -148,9 +137,7 @@ function buildPoolQuery(filter: MovieFilter | null): {
   }
   // filter.kind === "discover"
   if (filter.value === "now_playing_india") {
-    // PRD's own ask: movies currently in Indian theaters, not just
-    // "recently released" — now_playing + region is TMDB's actual
-    // theatrical-release data, not an approximation via date filtering.
+    // Actually in Indian theaters, from TMDB's release data.
     return { path: "/movie/now_playing", params: { region: "IN" } };
   }
   if (filter.value === "top_rated") return { path: "/movie/top_rated", params: {} };
@@ -184,13 +171,8 @@ export async function getMoviePool(
   return movies;
 }
 
-// ── movie detail (detail sheet only) ───────────────────────────────────
-// Runtime, cast, trailer, and streaming availability all need per-movie
-// TMDB calls the candidate pool deliberately skips (see MovieCard.tsx's
-// comment) — fetching this for all 50 swipe candidates would be slow and
-// TMDB-call-heavy, but it's cheap for the handful of items that actually
-// end up in a result list. `append_to_response` combines what would
-// otherwise be three separate requests into one.
+// Detail sheet only: runtime, cast, trailer and streaming need a per-movie
+// call, too slow to make for the whole pool.
 
 const LOGO_BASE = "https://image.tmdb.org/t/p/w92";
 // PRD section 38's example market — India (Netflix/Prime/JioHotstar).
@@ -228,10 +210,6 @@ interface TmdbGenreObject {
   name: string;
 }
 
-// The detail endpoint's shape differs from the list/summary endpoints
-// (TmdbMovieSummary) in one significant way: genres come back as full
-// {id, name} objects here, not the bare genre_ids array popular/discover
-// use — so no genre-name lookup table is needed for this path at all.
 interface TmdbMovieDetailResponse {
   title: string;
   overview: string;

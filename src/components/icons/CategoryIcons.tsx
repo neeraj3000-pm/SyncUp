@@ -1,14 +1,4 @@
-// One shared pair, used everywhere a category shows up visually (the
-// create-page picker, the waiting room, the join screen) — picked from a
-// set of options reviewed as a mockup first. currentColor + a plain
-// width/height default (overridable via className, same as ThemeToggle's
-// sun/moon icons) rather than a fixed size, since consumers need this at
-// very different scales: ~34px on the create page, ~16px inline in a
-// sentence elsewhere. strokeWidth is also overridable, separately from
-// size — stroke width is in viewBox units, so simply sizing an instance
-// up via className already scales it proportionally; this is for a
-// consumer that wants visibly heavier linework on top of that, without
-// changing the default weight everywhere else this icon appears.
+// Watch/Eat icons. currentColor; size and strokeWidth overridable.
 
 export function WatchIcon({
   className,

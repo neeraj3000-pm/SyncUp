@@ -8,12 +8,14 @@ export function SwipeProgress({
   progress,
   totalItems,
   myParticipantId,
+  mySwipeCount,
   hostParticipantId,
 }: {
   progress: ParticipantProgress[];
   totalItems: number;
   myParticipantId: string;
-  hostParticipantId?: string | null;
+  mySwipeCount: number;
+  hostParticipantId: string | null;
 }) {
   if (progress.length === 0) return null;
 
@@ -34,7 +36,11 @@ export function SwipeProgress({
             )}
           </span>
           <span className="font-semibold">
-            {p.finished_at ? <span className="text-sync">Done</span> : `${p.swipe_count}/${totalItems}`}
+            {p.finished_at ? (
+              <span className="text-sync">Done</span>
+            ) : (
+              `${p.participant_id === myParticipantId ? mySwipeCount : p.swipe_count}/${totalItems}`
+            )}
           </span>
         </li>
       ))}

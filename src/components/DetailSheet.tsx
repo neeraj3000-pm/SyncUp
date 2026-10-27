@@ -29,15 +29,37 @@ export function DetailSheet({ item, onClose }: { item: ItemRow; onClose: () => v
 
 type LoadState<T> = { status: "loading" } | { status: "error"; error: string } | { status: "ready"; data: T };
 
+// Reopening a detail sheet reuses the first fetch instead of paying for
+// another provider call (Places details are billed per request).
+const detailCache = new Map<string, Promise<ActionResult<unknown>>>();
+
+function loadCached<T>(
+  load: (externalId: string) => Promise<ActionResult<T>>,
+  cacheKey: string,
+  externalId: string,
+): Promise<ActionResult<T>> {
+  let pending = detailCache.get(cacheKey) as Promise<ActionResult<T>> | undefined;
+  if (!pending) {
+    pending = load(externalId).then((result) => {
+      // Failures aren't cached, so closing and reopening retries.
+      if (!result.ok) detailCache.delete(cacheKey);
+      return result;
+    });
+    detailCache.set(cacheKey, pending);
+  }
+  return pending;
+}
+
 function useDetail<T>(
   load: (externalId: string) => Promise<ActionResult<T>>,
+  category: string,
   externalId: string,
 ): LoadState<T> {
   const [state, setState] = useState<LoadState<T>>({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
-    load(externalId).then((result) => {
+    loadCached(load, `${category}:${externalId}`, externalId).then((result) => {
       if (cancelled) return;
       setState(
         result.ok ? { status: "ready", data: result.data } : { status: "error", error: result.error },
@@ -46,7 +68,7 @@ function useDetail<T>(
     return () => {
       cancelled = true;
     };
-  }, [load, externalId]);
+  }, [load, category, externalId]);
 
   return state;
 }
@@ -91,7 +113,7 @@ function MovieDetailContent({
   externalId: string;
   category: string;
 }) {
-  const state = useDetail<MovieDetail>(getMovieDetailAction, externalId);
+  const state = useDetail<MovieDetail>(getMovieDetailAction, "WATCH", externalId);
   if (state.status !== "ready") return <LoadingOrError state={state} />;
   const detail = state.data;
 
@@ -177,7 +199,7 @@ function RestaurantDetailContent({
   externalId: string;
   category: string;
 }) {
-  const state = useDetail<RestaurantDetail>(getRestaurantDetailAction, externalId);
+  const state = useDetail<RestaurantDetail>(getRestaurantDetailAction, "EAT", externalId);
   if (state.status !== "ready") return <LoadingOrError state={state} />;
   const detail = state.data;
 

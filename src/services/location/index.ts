@@ -1,23 +1,16 @@
 import "server-only";
 import { PLACES_BASE, placesHeaders } from "@/services/google-places";
 
-// PRD section 13/39: location handling stays behind its own provider layer,
-// same as movies/restaurants — separate from services/restaurants because
-// it's a genuinely different Places API family (Autocomplete + Place
-// Details for resolving a typed search into coordinates, not Nearby/Text
-// Search for finding restaurants once a location is known).
+// Places Autocomplete + Details: turns a typed area into coordinates.
 
 export interface LocationSuggestion {
   placeId: string;
   text: string;
 }
 
-// Google bills Autocomplete requests together with the one Place Details
-// call that follows a selection as a single "session" when they share a
-// sessionToken — cheaper than billing every keystroke's request on its own.
-// The client generates one token per distinct search (first keystroke after
-// the field was empty) and discards it once a suggestion is picked or the
-// field is abandoned, per Google's own session-token lifecycle guidance.
+// Sharing a sessionToken bills all the keystrokes plus the final Details
+// call as one session instead of per request. The client makes one token
+// per search.
 export async function getLocationSuggestions(
   input: string,
   sessionToken: string,
@@ -31,9 +24,7 @@ export async function getLocationSuggestions(
     body: JSON.stringify({
       input: trimmed,
       sessionToken,
-      // The app is India-focused (JioHotstar/₹ pricing already assume this
-      // market) — biasing suggestions to India cuts irrelevant results
-      // rather than making the field technically restrict to it.
+      // The app is India-focused (₹ pricing, Indian streaming services).
       includedRegionCodes: ["in"],
       languageCode: "en",
     }),
@@ -59,10 +50,8 @@ export interface LocationDetail {
   label: string;
 }
 
-// Resolves a picked suggestion into real coordinates — this is what lets a
-// typed area name drive the same precise, radius-based Nearby Search that
-// "Use my location" already gets (services/restaurants), instead of the
-// fuzzier free-text fallback that only kicks in when neither is available.
+// Coordinates let a picked area use radius-based Nearby Search, same as
+// "Use my location".
 export async function getLocationDetail(
   placeId: string,
   sessionToken: string,

@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
-export interface FilterChipOption {
+interface FilterChipOption {
   key: string;
   label: string;
   selected: boolean;

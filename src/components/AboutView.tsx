@@ -7,9 +7,7 @@ import { TrackedLink } from "@/components/TrackedLink";
 import { buttonPrimary } from "@/lib/ui";
 import { useInstallPrompt } from "@/lib/use-install-prompt";
 
-// Same "safe house style" as ResultsView's reveal cascade: critically
-// damped spring, no bounce, a short stagger between siblings. Reduced
-// motion keeps the fade but drops the lift.
+// Same cascade as the results reveal; reduced motion drops the lift.
 const container = {
   hidden: {},
   show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
@@ -53,9 +51,7 @@ const CHAT_BUBBLES = [
   { text: "anywhere's fine 🙃", align: "right" as const },
 ];
 
-// Constrains every section's content to a readable/well-composed width
-// while each section's own colored band stays full-bleed — same pattern
-// the portfolio site uses for its alternating bands.
+// Readable content width inside full-bleed coloured bands.
 const sectionInner = "mx-auto w-full max-w-5xl";
 
 const STATS = [
@@ -341,16 +337,9 @@ export function AboutView({ fromApp = false }: { fromApp?: boolean }) {
   );
 }
 
-// Static decoration, not the real interactive DecisionCard (which needs
-// live session data) — just enough of its look (rounded-card, the
-// tilted-stack-behind-the-top-card silhouette, the Sync/Pass pair) to read
-// as "this is the actual product" rather than generic hero art. Desktop
-// only: the hero's mobile layout already has CardFanHero for this slot.
-// Outer box reserves the actual (scaled-down) layout footprint on mobile;
-// the inner div holds the real markup at its native 230x420 size and is
-// visually scaled to fit via transform, so every offset inside it (the
-// poster, the floating chip, the button row) stays exactly in proportion
-// without hand-tuning a second set of measurements per breakpoint.
+// A static look-alike of the swipe card. The inner markup is laid out at
+// its native 230x420 and scaled with a transform on small screens, so
+// nothing inside needs per-breakpoint measurements.
 function PhonePreview() {
   return (
     <div className="relative h-[280px] w-[153px] lg:h-[420px] lg:w-[230px]">
@@ -392,9 +381,7 @@ function PhonePreview() {
   );
 }
 
-// Counts up from 0 once mounted — a static "92%" read as placeholder
-// copy, whereas a number that visibly arrives reads as a real, live
-// result. Reduced motion skips straight to the final value.
+// Counts up from 0 once mounted; reduced motion shows the final value.
 function CountUp({ to }: { to: number }) {
   const reduceMotion = useReducedMotion();
   const [value, setValue] = useState(reduceMotion ? to : 0);
@@ -414,9 +401,7 @@ function CountUp({ to }: { to: number }) {
   return <>{value}</>;
 }
 
-// A real screenshot of the live app (not a mockup), in the same phone-bezel
-// treatment as PhonePreview above — "here's the actual thing," not just a
-// stylized illustration.
+// A real screenshot in a phone bezel.
 function PhoneFrame({
   src,
   alt,
@@ -439,10 +424,7 @@ function PhoneFrame({
   );
 }
 
-// Two real screenshots fanned like CardFanHero's card stack — the landing
-// screen behind, the actual "YOU'RE SYNCED" reveal in front, so this
-// section shows the whole arc (open the app → get a real result) instead
-// of just the one screen a single frame could fit.
+// Home screen behind, the "YOU'RE SYNCED" reveal in front.
 function PhoneFan({ size }: { size: "small" | "large" }) {
   const dims = size === "large" ? { h: 440, w: 240 } : { h: 280, w: 153 };
   return (
@@ -482,14 +464,8 @@ function CheckIcon() {
   );
 }
 
-// The real official badges (Apple's and Google's own artwork), shown
-// unmodified — each is self-describing (the Apple one already says
-// "Coming Soon to the App Store" baked into the artwork; the surrounding
-// paragraph covers Google Play), so no extra label wrapper is needed.
-// A fixed box with object-contain (rather than a fixed height + w-auto)
-// keeps both the same size regardless of their differing source aspect
-// ratios, so they read as a matched pair instead of Apple's badge just
-// happening to be wider.
+// Official store badges, unmodified, in a fixed box so both render the
+// same size despite different aspect ratios.
 function StoreBadge({ src, alt }: { src: string; alt: string }) {
   return (
     <span className="relative block h-14 w-[172px]">
@@ -498,12 +474,8 @@ function StoreBadge({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-// The one option here that actually works today — no store, no install
-// step beyond what the platform itself supports. Chrome/Edge/Android get
-// a real "Install" button via the shared beforeinstallprompt capture;
-// iOS Safari has no such API (see use-install-prompt.ts) so it gets
-// instructions instead; everything else falls back to just opening the
-// app, where the browser's own install affordance (if any) still applies.
+// Chrome/Edge/Android get a real Install button, iOS gets instructions,
+// anything else just opens the app.
 function WebAppBadge() {
   const { platform, promptInstall } = useInstallPrompt();
 

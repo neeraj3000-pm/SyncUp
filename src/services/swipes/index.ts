@@ -1,11 +1,12 @@
 import "server-only";
 import { getSupabase } from "@/lib/supabase/server";
+import { getServiceSupabase } from "@/lib/supabase/service";
 
 export type SwipeDirection = "SYNC" | "PASS";
 
-// Goes through the record_swipe() RPC (migration 0004/0007), which checks
-// the session is ACTIVE itself. ON CONFLICT DO NOTHING inside it makes a
-// retried submission a silent no-op rather than a unique-constraint error.
+// record_swipe() and get_my_swipes() take a participant id on trust, so
+// they are service-role only (migration 0012) and every caller checks
+// ownership first (isOwnParticipant). A retried swipe is a no-op.
 export async function recordSwipe(
   sessionId: string,
   participantId: string,
@@ -13,7 +14,7 @@ export async function recordSwipe(
   direction: SwipeDirection,
   superLiked = false,
 ): Promise<void> {
-  const { error } = await getSupabase().rpc("record_swipe", {
+  const { error } = await getServiceSupabase().rpc("record_swipe", {
     p_session_id: sessionId,
     p_participant_id: participantId,
     p_item_id: itemId,
@@ -24,14 +25,13 @@ export async function recordSwipe(
   if (error) throw error;
 }
 
-// RLS hides every swipe while a session is ACTIVE — including your own, so
-// a refresh would re-show already-swiped cards. get_my_swipes() (migration
-// 0003) carves out just that one exception.
+// RLS hides every swipe while a session is ACTIVE, including your own —
+// this is how a refresh skips cards already swiped.
 export async function getMySwipedItemIds(
   sessionId: string,
   participantId: string,
 ): Promise<string[]> {
-  const { data, error } = await getSupabase().rpc("get_my_swipes", {
+  const { data, error } = await getServiceSupabase().rpc("get_my_swipes", {
     p_session_id: sessionId,
     p_participant_id: participantId,
   });

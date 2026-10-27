@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { isUuid } from "@/lib/validation";
-import { getParticipants, getSessionById } from "@/services/sessions";
+import { getHostParticipantId, getParticipants, getSessionById } from "@/services/sessions";
 import { getSessionItems } from "@/services/candidates";
 import { SessionRoom } from "@/components/SessionRoom";
 
@@ -32,6 +32,7 @@ export default async function SessionPage({
         session={session}
         participants={participants}
         sessionItems={sessionItems}
+        hostParticipantId={getHostParticipantId(participants)}
         serverNow={serverNow}
       />
     </main>
