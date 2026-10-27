@@ -1,7 +1,7 @@
 "use server";
 
 import type { ActionResult } from "@/lib/action-result";
-import { isUuid } from "@/lib/validation";
+import { isLatitude, isLongitude, isUuid, normalizeLocationLabel } from "@/lib/validation";
 import {
   createSession,
   getParticipants,
@@ -51,22 +51,11 @@ function normalizeName(raw: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-const MAX_LOCATION_LABEL_LENGTH = 100;
-
 // Rebuilt from the validated fields, so no extra client-sent keys get stored.
 function normalizeMovieFilter(raw: unknown): MovieFilter | null | "invalid" {
   if (raw === null || raw === undefined) return null;
   if (!isValidMovieFilter(raw)) return "invalid";
   return { kind: raw.kind, value: raw.value } as MovieFilter;
-}
-
-
-function isLatitude(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 90;
-}
-
-function isLongitude(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 180;
 }
 
 export async function createSessionAction(input: {
@@ -103,9 +92,7 @@ export async function createSessionAction(input: {
       ? { lat: input.locationLat, lng: input.locationLng }
       : null;
   const locationLabel =
-    category === "EAT" && !coords && typeof input.locationLabel === "string"
-      ? input.locationLabel.trim().slice(0, MAX_LOCATION_LABEL_LENGTH) || null
-      : null;
+    category === "EAT" && !coords ? normalizeLocationLabel(input.locationLabel) : null;
 
   if (category === "EAT" && !coords && !locationLabel) {
     return { ok: false, error: "Tell us where you want to eat." };
@@ -129,28 +116,23 @@ export async function createSessionAction(input: {
   }
 }
 
-// Backstops for SessionRoom's Realtime subscription: a dropped or delayed
-// WebSocket event would otherwise leave a joiner invisible, or a screen
-// stuck on the waiting room after the session started, until a reload.
-export async function getParticipantsAction(
+// Backstop for SessionRoom's Realtime subscription: a dropped WebSocket
+// event self-heals on the next poll instead of needing a reload. One action
+// for both reads, since Server Actions from a page run one at a time.
+export async function getSessionSnapshotAction(
   sessionId: string,
-): Promise<ActionResult<ParticipantRow[]>> {
+  includeParticipants: boolean,
+): Promise<ActionResult<{ session: SessionRow | null; participants: ParticipantRow[] | null }>> {
   if (!isUuid(sessionId)) return { ok: false, error: "Invalid request." };
   try {
-    return { ok: true, data: await getParticipants(sessionId) };
+    const [session, participants] = await Promise.all([
+      getSessionById(sessionId),
+      includeParticipants ? getParticipants(sessionId) : null,
+    ]);
+    return { ok: true, data: { session, participants } };
   } catch (error) {
-    console.error("getParticipantsAction failed:", error);
-    return { ok: false, error: "Couldn't refresh participants." };
-  }
-}
-
-export async function getSessionAction(sessionId: string): Promise<ActionResult<SessionRow | null>> {
-  if (!isUuid(sessionId)) return { ok: false, error: "Invalid request." };
-  try {
-    return { ok: true, data: await getSessionById(sessionId) };
-  } catch (error) {
-    console.error("getSessionAction failed:", error);
-    return { ok: false, error: "Couldn't refresh session status." };
+    console.error("getSessionSnapshotAction failed:", error);
+    return { ok: false, error: "Couldn't refresh this SyncUp." };
   }
 }
 

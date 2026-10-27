@@ -12,11 +12,7 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 import { buttonSecondary } from "@/lib/ui";
 import { track } from "@/lib/analytics";
 
-// The reveal is the one moment the whole app builds toward (PRD section
-// 32/33) — worth a cascade instead of the whole list appearing at once
-// (emil-design-eng: "elements all appear at once" → stagger 30-80ms apart).
-// A short delayChildren gives the page a single beat before anything moves,
-// rather than the cascade starting the instant the page paints.
+// The reveal cascades in, after a short beat.
 const container = {
   hidden: {},
   show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
@@ -30,10 +26,7 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
   const rest = matches.filter((m) => Math.round(m.sync_score) !== 100);
   const reduceMotion = useReducedMotion();
 
-  // Fires once per mount — ResultsView isn't kept around across a Re-Sync
-  // (that navigates to /create, a fresh mount next time), so there's no
-  // need for a ref-guard like the ones used elsewhere for events that can
-  // recur within one component's lifetime.
+  // Once per mount.
   useEffect(() => {
     track("reveal_shown", {
       session_id: session.id,
@@ -48,9 +41,7 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Critically damped, no bounce — same "safe house style" as the rest of
-  // the app (apple-design skill), reserved for momentum-driven gestures
-  // elsewhere. Reduced motion keeps the fade but drops the lift entirely.
+  // No bounce; reduced motion keeps the fade, drops the lift.
   const item = {
     hidden: { opacity: 0, y: reduceMotion ? 0 : 12 },
     show: {
@@ -61,9 +52,7 @@ export function ResultsView({ session, matches }: { session: SessionRow; matches
   };
 
   return (
-    // display: contents keeps this purely an animation-orchestration
-    // wrapper — its children still lay out as direct flex items of the
-    // parent <main>, so the existing flex-col/gap-8 spacing is untouched.
+    // display: contents — children still lay out in the parent <main>.
     <motion.div variants={container} initial="hidden" animate="show" className="contents">
       {/* No unanimous winner: Re-Sync is the real next step, so it sits
           beside the message instead of below a list to scroll past.

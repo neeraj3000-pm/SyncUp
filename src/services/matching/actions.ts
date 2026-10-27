@@ -22,7 +22,7 @@ export async function completeSessionByCreatorAction(input: {
   sessionId: string;
   creatorGuestId: string;
 }): Promise<ActionResult<{ completed: boolean }>> {
-  if (!isUuid(input.sessionId) || typeof input.creatorGuestId !== "string") {
+  if (!isUuid(input.sessionId) || !isUuid(input.creatorGuestId)) {
     return { ok: false, error: "Invalid request." };
   }
   try {

@@ -1,36 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
-// The one accepted exception to "media queries over capability, not user-
-// agent sniffing" (mobile-native skill): there's no feature-detectable way
-// to ask "can this browser manually add to home screen" — iOS Safari never
-// fires beforeinstallprompt and has no programmatic install path at all,
-// so telling it apart from a browser that might still fire that event
-// genuinely requires checking the UA. Even web.dev's own PWA-install guide
-// does this for the same reason.
-//
-// Matching just "is this an iPhone/iPad" isn't enough, though — Apple
-// requires every iOS browser to run on its engine, but each still ships
-// its own thin UI on top, and only Safari's own Share sheet has a real,
-// manifest-aware "Add to Home Screen." Chrome/Firefox/Edge/Opera on iOS
-// each carry their own UA token specifically so this can be told apart;
-// without ruling them out, Chrome-on-iPad got sent through the same
-// "tap Share, then Add to Home Screen" instructions as real Safari, for
-// a Share sheet that doesn't have that option.
+// iOS has no beforeinstallprompt and no feature-detectable "can add to home
+// screen", so this is the one place the UA is checked. Only Safari's own
+// Share sheet has "Add to Home Screen"; Chrome/Firefox/Edge/Opera on iOS
+// carry their own UA tokens and need to be sent to Safari instead.
 function iosBrowserKind(): "safari" | "other" | null {
-  if (typeof navigator === "undefined") return null;
   const ua = navigator.userAgent;
   if (!/iPad|iPhone|iPod/.test(ua)) return null;
   return /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? "other" : "safari";
 }
 
 function isStandalone() {
-  if (typeof window === "undefined") return false;
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
-    // iOS's own non-standard flag for "launched from the home screen" —
-    // matchMedia above doesn't cover it there.
+    // iOS's home-screen flag; the media query doesn't cover it there.
     (navigator as Navigator & { standalone?: boolean }).standalone === true
   );
 }
@@ -40,44 +25,53 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-export type InstallPlatform = "ios-safari" | "ios-other" | "promptable" | "other";
+type InstallPlatform = "ios-safari" | "ios-other" | "promptable" | "other";
 
-// Shared by InstallPrompt (the dismissible post-session nudge) and the
-// About page's always-visible install card — both need the same platform
-// read and the same beforeinstallprompt capture, just presented
-// differently, so the fiddly UA/event-listener logic lives here once.
+// beforeinstallprompt fires once per page load, usually before the component
+// that wants it has mounted — so it's captured as soon as this module loads
+// (the root layout imports it) and shared through a tiny store.
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
+const listeners = new Set<() => void>();
+
+function setDeferredPrompt(prompt: BeforeInstallPromptEvent | null) {
+  deferredPrompt = prompt;
+  listeners.forEach((listener) => listener());
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (e) => {
+    // Stops Chrome's own mini-infobar from showing alongside our UI.
+    e.preventDefault();
+    setDeferredPrompt(e as BeforeInstallPromptEvent);
+  });
+  window.addEventListener("appinstalled", () => setDeferredPrompt(null));
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function getPlatform(): InstallPlatform {
+  if (deferredPrompt) return "promptable";
+  const ios = iosBrowserKind();
+  return ios === "safari" ? "ios-safari" : ios === "other" ? "ios-other" : "other";
+}
+
 export function useInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [platform, setPlatform] = useState<InstallPlatform | null>(null);
-  const [standalone, setStandalone] = useState(false);
-
-  useEffect(() => {
-    // Deliberate exception to "don't setState in an effect": both checks
-    // read browser-only APIs (matchMedia, navigator.userAgent) that don't
-    // exist during SSR, so this can't be a useState initializer without
-    // crashing server-side — same pattern ThemeToggle uses for the same
-    // reason.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStandalone(isStandalone());
-    const ios = iosBrowserKind();
-    setPlatform(ios === "safari" ? "ios-safari" : ios === "other" ? "ios-other" : "other");
-
-    function handleBeforeInstallPrompt(e: Event) {
-      // Stops Chrome's own mini-infobar from appearing behind this —
-      // without it, our own UI and the browser's would both show up.
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setPlatform("promptable");
-    }
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-  }, []);
+  // null / false during SSR and hydration.
+  const platform = useSyncExternalStore(subscribe, getPlatform, () => null);
+  const standalone = useSyncExternalStore(subscribe, isStandalone, () => false);
 
   async function promptInstall() {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
+    const prompt = deferredPrompt;
+    if (!prompt) return;
+    // A prompt can only be shown once.
     setDeferredPrompt(null);
+    await prompt.prompt();
+    await prompt.userChoice;
   }
 
   return { platform, standalone, promptInstall };

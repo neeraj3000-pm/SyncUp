@@ -7,15 +7,11 @@ import type {
   RestaurantPriceSlug,
 } from "@/services/restaurants/filters";
 
-// PRD section 39: restaurant content flows through a provider abstraction,
-// never called directly from the UI. Google Places API (New) is the
-// provider (CLAUDE.md — chosen during scoping).
+// Google Places API (New), server-side only.
 
-// Rating/price/opening-hours fields put every search call under Places'
-// "Enterprise" SKU tier rather than the cheaper "Essentials" one — worth
-// knowing since Enterprise's free monthly allowance is smaller (1,000/month
-// vs. 10,000), but the PRD's restaurant card (section 23) needs all three,
-// so there's no cheaper field selection that still meets scope.
+// Rating/price/opening hours put every search in Places' pricier
+// "Enterprise" SKU (1,000 free/month vs 10,000), but the restaurant card
+// needs all three.
 const SEARCH_FIELD_MASK = [
   "places.id",
   "places.displayName",
@@ -63,12 +59,9 @@ async function placesSearch<T>(path: string, body: Record<string, unknown>): Pro
   return res.json() as Promise<T>;
 }
 
-// Place Photo (New) normally 302-redirects straight to the image, which
-// would mean embedding our API key in an <img src> the browser can read —
-// exactly what CLAUDE.md's security rule forbids. skipHttpRedirect=true
-// instead returns a JSON body with a pre-authenticated googleusercontent.com
-// URL that needs no key at all, safe to hand to the client the same way a
-// plain TMDB poster URL already is.
+// The default photo endpoint redirects with our API key in the URL;
+// skipHttpRedirect returns a keyless googleusercontent.com URL instead,
+// safe to hand to the browser.
 async function resolvePhotoUrl(photoName: string): Promise<string | null> {
   try {
     const res = await fetch(
@@ -79,8 +72,7 @@ async function resolvePhotoUrl(photoName: string): Promise<string | null> {
     const data = (await res.json()) as { photoUri?: string };
     return data.photoUri ?? null;
   } catch {
-    // A missing/broken photo shouldn't take down the whole pool — the card
-    // already has a fallback for a null image_url.
+    // A broken photo falls back to the card's placeholder.
     return null;
   }
 }
@@ -92,17 +84,10 @@ const PRICE_LABELS: Record<string, string> = {
   PRICE_LEVEL_VERY_EXPENSIVE: "₹₹₹₹",
 };
 
-// Matched against a place's PRIMARY type (not just "any of its types") —
-// precise enough that a hotel's restaurant can still match "Indian" while a
-// hotel itself doesn't just because it also happens to serve coffee. A few
-// close neighbors per cuisine keep that stricter match from thinning results
-// out. Places has no North/South Indian split, so "indian_restaurant" covers
-// both; there's no "brewery" type either, so Breweries & Bars uses the two
-// closest real ones.
+// Matched against a place's primary type only, so a hotel that serves
+// coffee isn't a "Cafe". Close neighbours per cuisine keep that strict
+// match from thinning results out.
 const CUISINE_PLACE_TYPES: Record<RestaurantCuisineSlug, readonly string[]> = {
-  // Google splits this into its own regional types, distinct from the
-  // generic "indian_restaurant" — missing them was quietly excluding a
-  // large share of real Indian restaurants from this filter.
   indian: ["indian_restaurant", "north_indian_restaurant", "south_indian_restaurant"],
   chinese: ["chinese_restaurant"],
   italian: ["italian_restaurant", "pizza_restaurant"],
@@ -139,8 +124,6 @@ function normalizeRestaurant(
     external_id: place.id,
     source: "google_places",
     title: place.displayName?.text ?? "Unnamed restaurant",
-    // No restaurant-description field in the PRD's detail list (section 24,
-    // unlike movies) — cuisine/rating/price/address already cover it.
     description: null,
     image_url: imageUrl,
     metadata: {
@@ -156,12 +139,8 @@ function normalizeRestaurant(
   };
 }
 
-// ── restaurant detail (detail sheet only) ───────────────────────────────
-// The swipe card's own metadata already has cuisine/rating/price/address/
-// distance (unlike movies, restaurants don't need a separate "skip the
-// expensive fields for the pool" split), but photos beyond the first one,
-// the website, and a map link aren't worth fetching for all 20-50 pool
-// candidates — same reasoning as MovieCard deferring runtime/cast/trailer.
+// Detail sheet only: extra photos, website and map link aren't worth
+// fetching for every candidate in the pool.
 const DETAIL_FIELD_MASK = [
   "id",
   "displayName",
@@ -189,10 +168,8 @@ export interface RestaurantDetail {
   priceLabel: string | null;
   address: string | null;
   openNow: boolean | null;
-  // Places has no generic "order online" link — a restaurant's own website
-  // is the closest MVP equivalent (PRD section 24's "ordering link where
-  // supported"); left out entirely when Google doesn't have one on file,
-  // same pattern as movies' "No streaming options" fallback.
+  // Places has no "order online" link; the restaurant's website is the
+  // closest equivalent.
   websiteUrl: string | null;
   mapUrl: string | null;
 }
@@ -230,20 +207,14 @@ export async function getRestaurantDetail(externalId: string): Promise<Restauran
 
 export type RestaurantLocation = { lat: number; lng: number } | { label: string };
 
-// Nearby Search (New) has no pagination at all (hard cap of 20 results per
-// call — see Google's docs), so later batches ("Show Me More") widen the
-// search radius instead of paging, trading a bit of precision for genuinely
-// new results. Capped at Places' own 50km radius ceiling.
+// Nearby Search has no pagination (20 results max), so "Show Me More"
+// batches widen the radius instead, up to Places' 50km ceiling.
 const DEFAULT_RADIUS_M = 3000;
 const MAX_RADIUS_M = 50000;
 
-// Nearby Search (New)'s request body has no priceLevels/openNow fields at
-// all (only includedTypes narrows what it searches for), and Text Search
-// (New) only takes a single includedType — useless once more than one
-// cuisine is selected. So cuisine narrows the Nearby Search request itself
-// (a real win: Places does the filtering), but price, open-now, and
-// multi-cuisine Text Search are all applied here, after the fetch, against
-// fields the field mask already pulls back for the card.
+// Nearby Search can only narrow by type, and Text Search takes a single
+// type, so price, open-now and multi-cuisine text searches are filtered
+// here after the fetch.
 function matchesFilter(place: PlacesResult, filter: RestaurantFilter | null): boolean {
   if (!filter) return true;
   if (filter.cuisine.length > 0) {
@@ -255,12 +226,9 @@ function matchesFilter(place: PlacesResult, filter: RestaurantFilter | null): bo
   return true;
 }
 
-// Text Search (New) does support real pagination via pageToken, but that
-// token would need to be persisted across separate server-action calls
-// (each batch request is its own stateless call) — out of scope for this
-// MVP. Rotating the query phrasing per batch is a pragmatic stand-in: any
-// restaurant it returns that's already in the session gets filtered out by
-// generateCandidatePool's own dedup, same as a real "no new results" case.
+// Text Search's pageToken would have to be stored between batches;
+// rotating the phrasing instead surfaces new places, and repeats are
+// deduped by generateCandidatePool.
 const TEXT_QUERY_VARIANTS = [
   "restaurants",
   "top rated restaurants",
@@ -270,10 +238,6 @@ const TEXT_QUERY_VARIANTS = [
 
 const RESULTS_PER_BATCH = 20;
 
-// The actual Places call + post-filter, shared by getRestaurantPool (which
-// goes on to resolve a photo per result) and previewRestaurantCount (which
-// only needs how many matched, so it skips that entirely — the expensive
-// part of a real pool generation).
 async function searchAndFilter(
   location: RestaurantLocation,
   batchNumber: number,
@@ -283,16 +247,10 @@ async function searchAndFilter(
   const cuisineTypes = filter?.cuisine.length
     ? Array.from(new Set(filter.cuisine.flatMap((c) => CUISINE_PLACE_TYPES[c])))
     : null;
-  // The Distance tab's own choice takes priority as the starting radius;
-  // "Show Me More" batches still widen it the same way as before, just from
-  // whatever base the person actually asked for instead of always 3km.
   const baseRadiusM = filter?.distanceKm ? filter.distanceKm * 1000 : DEFAULT_RADIUS_M;
 
   const response = isCoords
     ? await placesSearch<PlacesSearchResponse>("/places:searchNearby", {
-        // Unfiltered, any place of type "restaurant" qualifies, which also
-        // covers every specific cuisine type. includedPrimaryTypes takes an
-        // array natively, so every selected cuisine narrows this one call.
         ...(cuisineTypes
           ? { includedPrimaryTypes: cuisineTypes }
           : { includedTypes: ["restaurant"] }),
@@ -336,12 +294,9 @@ export async function getRestaurantPool(
   );
 }
 
-// Lets the host see roughly how many restaurants a filter combination
-// matches before starting the session — narrow filters (several cuisines
-// plus Open Now plus a tight radius) can otherwise leave almost nothing to
-// swipe on. Only ever reads the first batch (same as what the session will
-// actually open with) and skips photo resolution, so this is cheap enough
-// to call on every filter change.
+// How many places the first batch would hold with these filters, shown
+// before starting so narrow filters don't leave nothing to swipe. Skips
+// photo lookups, the expensive part.
 export async function previewRestaurantCount(
   location: RestaurantLocation,
   filter: RestaurantFilter | null,

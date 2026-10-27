@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,11 +8,7 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useGuestId, useStoredParticipantId } from "@/lib/guest";
 import { usePolling } from "@/lib/use-polling";
 import { buttonPrimary, buttonSecondary } from "@/lib/ui";
-import {
-  getParticipantsAction,
-  getSessionAction,
-  startSessionAction,
-} from "@/services/sessions/actions";
+import { getSessionSnapshotAction, startSessionAction } from "@/services/sessions/actions";
 import type { ParticipantRow, SessionRow, SessionStatus } from "@/services/sessions";
 import type { SessionItemRow } from "@/services/candidates";
 import { getSessionItemsAction } from "@/services/candidates/actions";
@@ -20,12 +17,17 @@ import {
   completeSessionByTimerAction,
 } from "@/services/matching/actions";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
-import { QRModal } from "@/components/QRModal";
 import { ParticipantList } from "@/components/ParticipantList";
 import { SessionTimer } from "@/components/SessionTimer";
 import { SwipeDeck } from "@/components/SwipeDeck";
 import { CategoryLabel } from "@/components/CategoryLabel";
+import { Sheet } from "@/components/Sheet";
 import { track } from "@/lib/analytics";
+
+// The QR library only loads if someone actually opens it.
+const QRModal = dynamic(() => import("@/components/QRModal").then((m) => m.QRModal), {
+  ssr: false,
+});
 
 const MIN_TO_START = 2;
 const POLL_MS = 4000;
@@ -50,11 +52,13 @@ export function SessionRoom({
   session: initialSession,
   participants: initialParticipants,
   sessionItems: initialSessionItems,
+  hostParticipantId,
   serverNow,
 }: {
   session: SessionRow;
   participants: ParticipantRow[];
   sessionItems: SessionItemRow[];
+  hostParticipantId: string | null;
   serverNow: string;
 }) {
   const router = useRouter();
@@ -68,41 +72,32 @@ export function SessionRoom({
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
+  const [endError, setEndError] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
   const timerFiredRef = useRef(false);
-  // How far this device's clock is from the server's (wrong timezone, fast
-  // system clock) — measured once against the timestamp the server captured
-  // when rendering this page, so the countdown doesn't lie.
+  // This device's clock error vs the server, so the countdown is honest.
   const [clockOffsetMs] = useState(() => new Date(serverNow).getTime() - Date.now());
-  // Fires once, only for the creator (they're the one who "generated" it) —
-  // this effect can re-run on every participants/timer poll, so a ref
-  // guards it rather than relying on the dependency array alone.
+  // invite_generated fires once, for the creator only.
   const inviteTrackedRef = useRef(false);
 
   const isWaiting = session.status === "WAITING";
   const isActive = session.status === "ACTIVE";
+  // Display only — starting and ending are re-authorized server-side.
+  const isCreator = myParticipantId != null && myParticipantId === hostParticipantId;
 
   useEffect(() => {
-    if (
-      inviteTrackedRef.current ||
-      session.status !== "WAITING" ||
-      !myGuestId ||
-      myGuestId !== session.creator_guest_id
-    ) {
-      return;
-    }
+    if (inviteTrackedRef.current || session.status !== "WAITING" || !isCreator) return;
     inviteTrackedRef.current = true;
     track("invite_generated", { session_id: session.id, category: session.category });
-  }, [session.status, session.id, session.category, session.creator_guest_id, myGuestId]);
+  }, [session.status, session.id, session.category, isCreator]);
 
-  // PRD section 31: once complete, everyone moves to the reveal with no
-  // action required.
+  // Once complete, everyone moves to the reveal automatically.
   useEffect(() => {
     if (session.status === "COMPLETED") router.push(`/results/${session.id}`);
   }, [session.status, session.id, router]);
 
-  // Realtime: participant joins and session status/timer changes (PRD
-  // section 44). The server stays authoritative — this relays its rows.
+  // Realtime: participant joins and session status/timer changes.
   useEffect(() => {
     const supabase = getBrowserSupabase();
     const channel = supabase
@@ -132,33 +127,21 @@ export function SessionRoom({
     };
   }, [session.id]);
 
-  // Polling backstops for the subscription above: a dropped or delayed
-  // WebSocket event self-heals within one interval instead of needing a
-  // manual refresh.
+  // Polling backstop for the subscription above. Participants only matter
+  // in the waiting room.
   usePolling(
     async () => {
-      const result = await getParticipantsAction(session.id);
-      if (result.ok) setParticipants(result.data);
-    },
-    POLL_MS,
-    isWaiting,
-  );
-
-  usePolling(
-    async () => {
-      const result = await getSessionAction(session.id);
-      if (result.ok && result.data) {
-        const next = result.data;
-        setSession((prev) => latest(prev, next));
-      }
+      const result = await getSessionSnapshotAction(session.id, isWaiting);
+      if (!result.ok) return;
+      const { session: next, participants: nextParticipants } = result.data;
+      if (next) setSession((prev) => latest(prev, next));
+      if (nextParticipants) setParticipants(nextParticipants);
     },
     POLL_MS,
     isWaiting || isActive,
   );
 
-  // The pool is generated as the session starts, after this page's own
-  // server-side fetch — so whoever is here when it goes ACTIVE pulls it,
-  // retrying until it arrives.
+  // Whoever is here when the session goes ACTIVE fetches the new pool.
   usePolling(
     async () => {
       const result = await getSessionItemsAction(session.id);
@@ -168,13 +151,9 @@ export function SessionRoom({
     isActive && sessionItems.length === 0,
   );
 
-  // PRD section 31: the timer running out ends the session for everyone.
-  // A short repeating check (not one long setTimeout) because phones
-  // suspend timers in backgrounded tabs; the hook also re-checks the moment
-  // the tab is visible again. complete_session_on_timer re-checks the
-  // deadline against the database clock and is idempotent, so every
-  // device attempting it is safe — and navigation waits for the server to
-  // confirm COMPLETED rather than trusting this device's clock.
+  // When the timer runs out, every device asks the server to complete the
+  // session. Checked repeatedly (phones suspend background timers); the
+  // server re-checks the deadline and only a confirmed COMPLETED navigates.
   const expiresAt = session.expires_at ? new Date(session.expires_at).getTime() : null;
   usePolling(
     async () => {
@@ -225,21 +204,20 @@ export function SessionRoom({
     );
   }
 
-  const isCreator = myGuestId === session.creator_guest_id;
-  const host = participants.find((p) => p.guest_id === session.creator_guest_id);
-  const hostParticipantId = host?.id ?? null;
-  const hostName = host?.display_name ?? "the host";
+  const hostName =
+    participants.find((p) => p.id === hostParticipantId)?.display_name ?? "the host";
 
   async function completeNow() {
     if (!myGuestId) return;
     setEnding(true);
+    setEndError(null);
     const result = await completeSessionByCreatorAction({
       sessionId: session.id,
       creatorGuestId: myGuestId,
     });
     setEnding(false);
     if (!result.ok || !result.data.completed) {
-      window.alert(result.ok ? "Couldn't end this SyncUp. Please try again." : result.error);
+      setEndError(result.ok ? "Couldn't end this SyncUp. Please try again." : result.error);
       return;
     }
     // Navigate directly rather than waiting for the realtime UPDATE to
@@ -247,11 +225,6 @@ export function SessionRoom({
     router.push(`/results/${session.id}`);
   }
 
-  // "Reveal Results" (everyone already finished) skips confirmation; "End
-  // Now" can cut others off mid-swipe, so it confirms first.
-  function handleEndNow() {
-    if (window.confirm("End this SyncUp now and reveal the results?")) completeNow();
-  }
 
   async function handleStart() {
     if (!myGuestId) return;
@@ -274,10 +247,7 @@ export function SessionRoom({
   if (isActive) {
     return (
       <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-6 overflow-y-auto overscroll-contain px-6 py-6 text-center">
-        {/* The timer + card + progress list + End SyncUp Now! button don't
-            always fit a short phone viewport on their own — this region
-            needs to actually scroll (not just clip) when they don't,
-            otherwise the button is unreachable with nothing to scroll. */}
+        {/* Scrolls on short phones so End SyncUp Now! stays reachable. */}
         <h1 className="sr-only">
           Deciding <CategoryLabel category={session.category} />
         </h1>
@@ -291,6 +261,7 @@ export function SessionRoom({
           <SwipeDeck
             sessionId={session.id}
             participantId={myParticipantId}
+            guestId={myGuestId}
             category={session.category}
             initialItems={sessionItems}
             isCreator={isCreator}
@@ -303,12 +274,52 @@ export function SessionRoom({
         {isCreator && (
           <button
             type="button"
-            onClick={handleEndNow}
+            // "Reveal Results" (everyone done) skips this; "End Now" can cut
+            // others off mid-swipe, so it confirms first.
+            onClick={() => setConfirmingEnd(true)}
             disabled={ending}
             className="w-fit rounded-pill border border-border bg-surface px-6 py-3 text-sm font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97] disabled:opacity-50"
           >
             {ending ? "Ending…" : "End SyncUp Now!"}
           </button>
+        )}
+        {endError && !confirmingEnd && <p className="text-sm text-red-500">{endError}</p>}
+
+        {confirmingEnd && (
+          <Sheet title="End this SyncUp?" onClose={() => setConfirmingEnd(false)}>
+            {(close) => (
+              <div className="flex flex-col gap-6 text-center">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-xl font-bold leading-tight tracking-tight">
+                    End this SyncUp?
+                  </h2>
+                  <p className="text-sm text-foreground-muted">
+                    Everyone&apos;s swipes so far will count, and the results will be revealed
+                    to the whole group.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={completeNow}
+                    disabled={ending}
+                    className={`w-full ${buttonPrimary}`}
+                  >
+                    {ending ? "Ending…" : "End & Reveal Results"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={close}
+                    disabled={ending}
+                    className={`w-full ${buttonSecondary}`}
+                  >
+                    Keep Swiping
+                  </button>
+                </div>
+                {endError && <p className="text-sm text-red-500">{endError}</p>}
+              </div>
+            )}
+          </Sheet>
         )}
       </div>
     );

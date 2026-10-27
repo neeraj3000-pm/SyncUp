@@ -22,7 +22,7 @@ export function getOrCreateGuestId(): string {
 // Remembers which participant row *this* session belongs to, so reopening a
 // join link or refreshing the waiting room skips straight past the name
 // form instead of asking again.
-export function getStoredParticipantId(sessionId: string): string | null {
+function getStoredParticipantId(sessionId: string): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem(PARTICIPANT_ID_PREFIX + sessionId);
 }
@@ -35,12 +35,8 @@ export function setStoredParticipantId(
   window.localStorage.setItem(PARTICIPANT_ID_PREFIX + sessionId, participantId);
 }
 
-// localStorage never changes from outside this tab, so there's nothing to
-// subscribe to — but reading it still needs to happen after hydration, not
-// during the server render. useSyncExternalStore (rather than an effect +
-// setState) is the React-sanctioned way to do that: it serves
-// `getServerSnapshot` for the SSR pass and the initial client render (so
-// they match), then swaps in the real value from `getSnapshot` right after.
+// Read after hydration via useSyncExternalStore (null/undefined on the
+// server). Nothing to subscribe to: these keys only change in this tab.
 const noSubscription = () => () => {};
 
 export function useGuestId(): string | null {

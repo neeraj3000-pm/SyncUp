@@ -1,17 +1,7 @@
-// The fanned three-card mark from the app icon, scaled up — the one
-// shared "brand illustration" moment, so any screen that uses it stays in
-// sync with the others instead of drifting into its own one-off version.
-// Fixed hex values, not theme tokens: this mirrors the actual icon file,
-// which is a single static asset that never changes color between light
-// and dark — --foreground/--secondary would flip on it in a way the real
-// icon never does.
-//
-// Deliberately a fixed size: a flex-1 illustration doesn't reliably shrink
-// under overflow and pushed content below the fold on short screens.
-// Callers put a plain zero-basis spacer next to it to absorb extra space.
-//
-// The border-border outline keeps the leftmost card (#2b2d42, identical to
-// the dark-mode background) visible in dark mode.
+// The app icon's fanned cards, scaled up. Fixed colours (they mirror the
+// icon, which doesn't change with the theme) and a fixed size (callers add
+// a spacer to absorb extra height). The border keeps the dark card visible
+// on the dark background.
 export function CardFanHero() {
   return (
     <div aria-hidden className="flex items-center justify-center py-2">

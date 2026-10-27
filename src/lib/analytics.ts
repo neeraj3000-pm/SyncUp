@@ -1,10 +1,7 @@
-import posthog from "posthog-js";
+import type { PostHog } from "posthog-js";
 
-// PRD section 60's event list is deliberately short and named — this is
-// that taxonomy as a type, not posthog-js's autocapture (which is off,
-// see initAnalytics below): autocapture would also log the guest-name and
-// session-code inputs, which section 59 ("no unnecessary personal data")
-// specifically doesn't want captured.
+// PRD section 60's named events. Autocapture stays off: it would also log
+// guest names and session codes (section 59).
 export type AnalyticsEvent =
   | "start_clicked"
   | "join_clicked"
@@ -23,39 +20,56 @@ export type AnalyticsEvent =
   | "action_clicked"
   | "resync_clicked";
 
-let enabled = false;
+const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 
-// Called once, client-side only, from <Analytics /> in layout.tsx. A
-// missing key (local dev, a fork nobody's wired PostHog up for yet) is a
-// silent no-op rather than a crash — track() below just does nothing
-// until this has actually run.
+type Capture = [event: string, properties?: Record<string, unknown>];
+
+// posthog-js is ~100KB that nothing on screen needs, so it loads once the
+// page is idle. Events from before then wait here; with no key configured
+// (local dev) there's no queue and every call is a no-op.
+let client: PostHog | null = null;
+let queue: Capture[] | null = KEY && typeof window !== "undefined" ? [] : null;
+let loading = false;
+
+// Called once from <Analytics /> in layout.tsx.
 export function initAnalytics() {
-  if (enabled || typeof window === "undefined") return;
-  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-  if (!key) return;
+  if (loading || !KEY || !queue) return;
+  loading = true;
+  const key = KEY;
 
-  posthog.init(key, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
-    // Guests never sign in (PRD: "no account, ever, for participants") —
-    // don't create a PostHog person profile off the back of anonymous
-    // traffic just because it showed up.
-    person_profiles: "identified_only",
-    // <Analytics /> sends $pageview itself on route change (App Router
-    // navigations don't fire real page loads, so posthog-js's own
-    // capture_pageview default would miss them anyway).
-    capture_pageview: false,
-    autocapture: false,
-  });
-  enabled = true;
+  const load = () =>
+    import("posthog-js")
+      .then(({ default: posthog }) => {
+        posthog.init(key, {
+          api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
+          // Guests never sign in, so no person profiles for anonymous traffic.
+          person_profiles: "identified_only",
+          // <Analytics /> sends $pageview itself — App Router navigations
+          // aren't real page loads.
+          capture_pageview: false,
+          autocapture: false,
+        });
+        client = posthog;
+        queue?.forEach(([event, properties]) => posthog.capture(event, properties));
+        queue = null;
+      })
+      .catch(() => {
+        queue = null;
+      });
+
+  if ("requestIdleCallback" in window) requestIdleCallback(load, { timeout: 4000 });
+  else setTimeout(load, 1500);
 }
 
-export function isAnalyticsEnabled() {
-  return enabled;
+function capture(event: string, properties?: Record<string, unknown>) {
+  if (client) client.capture(event, properties);
+  else queue?.push([event, properties]);
 }
 
 export function track(event: AnalyticsEvent, properties?: Record<string, unknown>) {
-  if (!enabled) return;
-  posthog.capture(event, properties);
+  capture(event, properties);
 }
 
-export { posthog };
+export function trackPageview(url: string) {
+  capture("$pageview", { $current_url: url });
+}

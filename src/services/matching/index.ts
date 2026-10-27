@@ -1,5 +1,6 @@
 import "server-only";
 import { getSupabase } from "@/lib/supabase/server";
+import { getServiceSupabase } from "@/lib/supabase/service";
 import { getSessionById } from "@/services/sessions";
 import type { ItemRow } from "@/services/candidates";
 
@@ -25,18 +26,16 @@ export async function getMatches(sessionId: string): Promise<MatchRow[]> {
   return (data ?? []) as unknown as MatchRow[];
 }
 
-// Both completion RPCs are idempotent no-ops when their conditions aren't
-// met (deadline not reached per the database clock, caller isn't the
-// creator, session already finished) — so the caller learns whether the
-// session is really COMPLETED from the row itself, never from the fact that
-// the call didn't throw. That keeps the server the authority on the timer
-// (CLAUDE.md) even when a device's own clock runs fast.
+// Both completion RPCs are silent no-ops when their conditions aren't met
+// (deadline not reached by the database clock, caller isn't the creator,
+// already finished), so success is read back from the row itself — the
+// server stays the authority on the timer even when a device clock is fast.
 async function completeAndConfirm(
   rpc: "complete_session_on_timer" | "complete_session_by_creator",
   args: Record<string, string>,
   sessionId: string,
 ): Promise<boolean> {
-  const { error } = await getSupabase().rpc(rpc, args);
+  const { error } = await getServiceSupabase().rpc(rpc, args);
   if (error) throw error;
 
   const session = await getSessionById(sessionId);

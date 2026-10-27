@@ -1,6 +1,7 @@
 import { getSessionWithCreatorByCode } from "@/services/sessions";
 import { ErrorScreen } from "@/components/ErrorScreen";
 import { JoinSessionView } from "./JoinSessionView";
+import { RejoinRedirect } from "./RejoinRedirect";
 
 const TRY_ANOTHER_CODE = { label: "Try another code", href: "/join" } as const;
 
@@ -26,11 +27,25 @@ export default async function JoinByCodePage({
 
   if (session.status === "ACTIVE") {
     return (
-      <ErrorScreen
-        title="This SyncUp has already started."
-        body="Ask for a new invite once they start another one."
-        action={TRY_ANOTHER_CODE}
-      />
+      <RejoinRedirect sessionId={session.id} href={`/session/${session.id}`}>
+        <ErrorScreen
+          title="This SyncUp has already started."
+          body="Ask for a new invite once they start another one."
+          action={TRY_ANOTHER_CODE}
+        />
+      </RejoinRedirect>
+    );
+  }
+
+  if (session.status === "COMPLETED") {
+    return (
+      <RejoinRedirect sessionId={session.id} href={`/results/${session.id}`}>
+        <ErrorScreen
+          title="This SyncUp has ended."
+          body="Start a new one instead."
+          action={{ label: "Start a new SyncUp!", href: "/create" }}
+        />
+      </RejoinRedirect>
     );
   }
 

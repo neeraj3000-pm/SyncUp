@@ -17,24 +17,16 @@ export const metadata: Metadata = {
   description:
     "Swipe with the people you're with. SyncUp finds what everyone actually wants to watch or eat.",
   manifest: "/manifest.json",
-  // An explicit `icons` object here REPLACES Next's automatic file-based
-  // icon detection rather than merging with it — so src/app/icon.png's
-  // favicon link was silently missing from every page until `icon` was
-  // added below explicitly, alongside the iOS home-screen icon (which
-  // lives in public/ under a name iOS specifically expects, so it was
-  // never picked up by file convention regardless).
+  // Setting `icons` replaces Next's file-based icon detection, so the
+  // favicon has to be listed here too.
   icons: {
     icon: "/icon.png",
     apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,
-    // "black-translucent" draws the status bar as a transparent overlay
-    // instead of a solid reserved bar — matching how this app already
-    // paints under the notch everywhere else (viewportFit: "cover" +
-    // env(safe-area-inset-*) padding below). The solid "default"/"black"
-    // options would instead show a plain white or black strip that
-    // clashes with the app's own cream/navy background.
+    // Transparent status bar over our own background (we already pad for
+    // the notch below) instead of a white/black strip.
     statusBarStyle: "black-translucent",
     title: "SyncUp!",
   },
@@ -43,19 +35,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // viewportFit lets the page draw under the notch/Dynamic Island — without
-  // it every env(safe-area-inset-*) value below is just 0px, so this has to
-  // come first. interactiveWidget makes the on-screen keyboard shrink the
-  // layout viewport on Android the same way it already does on iOS, so
-  // 100dvh and bottom-pinned buttons react to it correctly there too.
+  // Needed for env(safe-area-inset-*) to be non-zero.
   viewportFit: "cover",
+  // Android's keyboard shrinks the layout like iOS's does.
   interactiveWidget: "resizes-content",
   colorScheme: "light dark",
-  // Matches the actual background color at the top of the page in each
-  // theme (globals.css's --background), not the brand orange — this drives
-  // the phone's status bar / browser chrome color, and using the brand
-  // color there looks like a mismatched, unfinished web page rather than
-  // an installed app.
+  // Browser chrome matches each theme's --background, like an installed app.
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f6f1e9" },
     { media: "(prefers-color-scheme: dark)", color: "#2b2d42" },
@@ -67,22 +52,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${manrope.variable} h-dvh antialiased`}
-      // The blocking script below deliberately sets data-theme on this
-      // element before React hydrates, so its attributes here will
-      // legitimately differ from what the server rendered — this tells
-      // React that's expected, not a bug to warn about (the standard fix
-      // for this pattern, same as libraries like next-themes use).
+      // The theme script below sets data-theme before hydration.
       suppressHydrationWarning
     >
       {/* Nothing scrolls at the document level (see globals.css); a screen
           with more content than fits provides its own scroll region.
           Safe-area padding lives here once for every page. */}
       <body className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-        {/* Applies a saved theme choice to <html> before the rest of the
-            page paints — without this, ThemeToggle's own effect would run
-            after first paint and visibly flash the wrong theme for a
-            moment. Plain, synchronous, no dependency on React having
-            hydrated yet; must stay in sync with ThemeToggle's storage key. */}
+        {/* Applies the saved theme before first paint (no flash). Shares
+            ThemeToggle's storage key. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('syncup-theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`,
@@ -92,11 +70,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <OfflineBanner />
         <ThemeToggle />
         <ServiceWorkerRegister />
-        {/* Suspense keeps useSearchParams' static-rendering opt-out scoped
-            to just this component — every route here is otherwise
-            prerendered (see the build output's "○ Static" pages), and
-            without this boundary a layout-level useSearchParams would pull
-            all of them into dynamic rendering. */}
+        {/* Keeps useSearchParams from making every route dynamic. */}
         <Suspense fallback={null}>
           <Analytics />
         </Suspense>
