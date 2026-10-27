@@ -19,7 +19,8 @@ export function Sheet({
   onClose: () => void;
   // The dialog's accessible name.
   title: string;
-  children: React.ReactNode;
+  // A function child gets `close`, which plays the exit animation first.
+  children: React.ReactNode | ((close: () => void) => React.ReactNode);
 }) {
   // Closing hides locally first; the parent's onClose runs once the exit
   // animation finishes.
@@ -107,7 +108,7 @@ export function Sheet({
             >
               ✕
             </button>
-            {children}
+            {typeof children === "function" ? children(() => setVisible(false)) : children}
           </motion.div>
         </motion.div>
       )}

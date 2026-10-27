@@ -21,6 +21,7 @@ import { ParticipantList } from "@/components/ParticipantList";
 import { SessionTimer } from "@/components/SessionTimer";
 import { SwipeDeck } from "@/components/SwipeDeck";
 import { CategoryLabel } from "@/components/CategoryLabel";
+import { Sheet } from "@/components/Sheet";
 import { track } from "@/lib/analytics";
 
 // The QR library only loads if someone actually opens it.
@@ -73,6 +74,7 @@ export function SessionRoom({
   const [ending, setEnding] = useState(false);
   const [endError, setEndError] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
   const timerFiredRef = useRef(false);
   // This device's clock error vs the server, so the countdown is honest.
   const [clockOffsetMs] = useState(() => new Date(serverNow).getTime() - Date.now());
@@ -223,11 +225,6 @@ export function SessionRoom({
     router.push(`/results/${session.id}`);
   }
 
-  // "Reveal Results" (everyone already finished) skips confirmation; "End
-  // Now" can cut others off mid-swipe, so it confirms first.
-  function handleEndNow() {
-    if (window.confirm("End this SyncUp now and reveal the results?")) completeNow();
-  }
 
   async function handleStart() {
     if (!myGuestId) return;
@@ -277,14 +274,53 @@ export function SessionRoom({
         {isCreator && (
           <button
             type="button"
-            onClick={handleEndNow}
+            // "Reveal Results" (everyone done) skips this; "End Now" can cut
+            // others off mid-swipe, so it confirms first.
+            onClick={() => setConfirmingEnd(true)}
             disabled={ending}
             className="w-fit rounded-pill border border-border bg-surface px-6 py-3 text-sm font-semibold shadow-card transition-[background-color,transform,scale] duration-150 ease-out hover:bg-surface-raised active:scale-[0.97] disabled:opacity-50"
           >
             {ending ? "Ending…" : "End SyncUp Now!"}
           </button>
         )}
-        {endError && <p className="text-sm text-red-500">{endError}</p>}
+        {endError && !confirmingEnd && <p className="text-sm text-red-500">{endError}</p>}
+
+        {confirmingEnd && (
+          <Sheet title="End this SyncUp?" onClose={() => setConfirmingEnd(false)}>
+            {(close) => (
+              <div className="flex flex-col gap-6 text-center">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-xl font-bold leading-tight tracking-tight">
+                    End this SyncUp?
+                  </h2>
+                  <p className="text-sm text-foreground-muted">
+                    Everyone&apos;s swipes so far will count, and the results will be revealed
+                    to the whole group.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={completeNow}
+                    disabled={ending}
+                    className={`w-full ${buttonPrimary}`}
+                  >
+                    {ending ? "Ending…" : "End & Reveal Results"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={close}
+                    disabled={ending}
+                    className={`w-full ${buttonSecondary}`}
+                  >
+                    Keep Swiping
+                  </button>
+                </div>
+                {endError && <p className="text-sm text-red-500">{endError}</p>}
+              </div>
+            )}
+          </Sheet>
+        )}
       </div>
     );
   }
